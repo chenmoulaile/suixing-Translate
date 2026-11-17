@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>随行翻译</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- 主面板：禁翻页时整体隐藏，替换为 #unsupported -->
+  <div id="app">
+    <header class="head">
+      <img class="logo" src="../assets/icons/icon32.png" alt="随行翻译">
+      <span class="title">随行翻译</span>
+      <span class="ver" id="ver"></span>
+    </header>
+
+    <!-- 主按钮三态：翻译 / 翻译中…（禁用）/ 显示原文 -->
+    <button id="mainBtn" class="main-btn" type="button">翻译</button>
+
+    <!-- 两组分段开关：模式（双语对照|仅译文）与范围（智能|全文） -->
+    <div class="seg-row">
+      <div class="seg" id="modeSeg" role="group" aria-label="翻译模式">
+        <button type="button" data-v="bilingual">双语对照</button>
+        <button type="button" data-v="translation-only">仅译文</button>
+      </div>
+      <div class="seg" id="scopeSeg" role="group" aria-label="翻译范围">
+        <button type="button" data-v="smart">智能</button>
+        <button type="button" data-v="full">全文</button>
+      </div>
+    </div>
+
+    <!-- 服务 / 目标语言 -->
+    <div class="field">
+      <label for="serviceSel">翻译服务</label>
+      <select id="serviceSel"></select>
+    </div>
+    <div class="field">
+      <label for="langSel">目标语言</label>
+      <select id="langSel"></select>
+    </div>
+
+    <!-- 进度 / 提示 / 错误 / 能力状态 行 -->
+    <div id="progressRow" class="note" hidden>翻译中…</div>
+    <div id="hintRow" class="note hint" hidden></div>
+    <div id="errorRow" class="error" hidden></div>
+    <div id="featRow" class="note feat" hidden></div>
+
+    <!-- 更多面板：默认展开，「打开设置」始终可见（按钮文案与折叠态同步由 popup.js 初始化） -->
+    <button id="moreBtn" class="link-btn" type="button">收起 ▴</button>
+    <div id="morePanel" class="more">
+      <div class="more-row">
+        <span class="more-label">导出双语</span>
+        <div class="btn-trio">
+          <button id="exportHtmlBtn" class="mini-btn" type="button" title="独立 HTML 快照，可离线打开">HTML</button>
+          <button id="exportMdBtn" class="mini-btn" type="button" title="逐段原文+译文成对">MD</button>
+          <button id="exportTxtBtn" class="mini-btn" type="button" title="纯文本逐段成对">TXT</button>
+        </div>
+      </div>
+      <div class="more-row">
+        <span id="cacheText">缓存：- 条</span>
+        <button id="clearCacheBtn" class="mini-btn" type="button">清除缓存</button>
+      </div>
+      <div class="more-row">
+        <button id="openOptionsBtn" class="mini-btn wide" type="button">打开设置</button>
+      </div>
+      <div class="more-row">
+        <button id="btnSidebar" class="mini-btn wide" type="button">翻译侧边栏</button>
+      </div>
+      <div class="more-row feature-row">
+        <button id="btnDoc" class="mini-btn wide" type="button">文档翻译</button>
+        <button id="btnSubtitle" class="mini-btn wide" type="button">双语字幕：关</button>
+      </div>
+      <div class="more-row feature-row">
+        <button id="btnImageTrans" class="mini-btn wide" type="button">图片翻译：关</button>
+        <button id="btnLayout" class="mini-btn wide" type="button">并排双语：关</button>
+      </div>
+      <div class="more-row">
+        <span class="more-note">字幕需刷新视频页；图片翻译依赖 OCR 服务；并排布局对新翻译生效。</span>
+      </div>
+      <div class="more-row">
+        <button id="neverBtn" class="mini-btn wide danger" type="button">永不翻译此站点</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 禁翻页兜底面板 -->
+  <div id="unsupported" class="unsupported" hidden>
+    <div class="u-main">此页面不支持翻译</div>
+    <div class="u-sub">浏览器内置页面（chrome://、edge://、about:）与扩展商店页无法注入</div>
+  </div>
+
+  <!-- 轻提示 -->
+  <div id="toast" hidden></div>
+
+  <!-- shared/defaults.js 为协议规定的四处共用默认值；缺失时 popup.js 内置兜底 -->
+  <script src="../shared/defaults.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+{
+  "passed": 22,
+  "failed": 0,
+  "results": [
+    {
+      "name": "1. 扩展被 headless Chromium 加载（service worker 启动、内容脚本注入、GET_FEATURES 可用）",
+      "passed": true,
+      "evidence": [
+        "Chromium: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+        "SW target: null",
+        "SW 内 importScripts 全部就位: TA=true adapters(deepl-free,deepl-api,google,youdao,iflyrec,caiyun,edge,openai,claude,gemini,deepseek,ollama)=12/12",
+        "GET_FEATURES: ok=true features={\"hoverEnabled\":true,\"selectionEnabled\":true,\"inputEnabled\":true,\"floatBall\":true} themes=24",
+        "页面 console 无 [TA] 前置文件缺失类报错（收集 3 条 console/异常: [debug] [TA][subtitle] 已停止 | [debug] [TA][subtitle] 已停止）"
+      ],
+      "detail": null
+    },
+    {
+      "name": "6a. 真实翻译服务连通性（默认链 5 服务逐一直发，含 ⟪mN⟫ token 样本）",
+      "passed": true,
+      "evidence": [
+        "google: FAIL RATE_LIMITED:HTTP 429: https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=The+quick+brown+fox+jumps+over+the+lazy+dog.",
+        "edge: FAIL HTTP_ERROR:HTTP 404: https://edge.microsoft.com/translate/auth",
+        "deepl-free: OK · 样例=\"鉴于对于所有 x，都有 ⟪m1⟫ + ⟪m2⟫ = ⟪m3⟫ 成立，因此通过与几何级数的情况进行比较，可知该级数收敛。\" · token保留=3/3",
+        "caiyun: FAIL BAD_RESPONSE:彩云 jwt 接口返回无效数据",
+        "youdao: FAIL BAD_RESPONSE:有道响应 AES 解密失败: OperationError"
+      ],
+      "detail": null
+    },
+    {
+      "name": "2. 双语排版：每段原文正下方出现中文译文，译文宽=父内容宽、译文在下",
+      "passed": true,
+      "evidence": [
+        "原始段落单元（不含克隆体）=38，达标=38（宽度=父内容宽 ±2px、译文在下、译文含中文、无错误态）",
+        "不达标明细: []",
+        "另有克隆体残留单元=0（嵌套 UL 被当内联元素克隆进译文所致，属 2a 项缺陷，不属原始段落）",
+        "正文无 ⟪mN⟫ token 残留: true",
+        "GET_PAGE_STATE: {\"translated\":true,\"error\":null}"
+      ],
+      "detail": null
+    },
+    {
+      "name": "2a. li>Text+嵌套ul：译文在原文行与子列表之间（不出现 appendChild 末尾错位）",
+      "passed": true,
+      "evidence": [
+        "场景数=3，wrapper 位于原文行与子列表之间=3",
+        "逐例: [{\"idx\":0,\"beforeUl\":true,\"last\":false,\"inner\":\"晨间例行活动\",\"childOrder\":[\"#text:\\\"Morning routine\\\"\",\"WRAPPER\",\"<UL>\",\"#text:\\\"\\\"\"]},{\"idx\":4,\"beforeUl\":true,\"last\":false,\"inner\":\"深度工作时段\",\"childOrder\":[\"#text:\\\"Deep work block\\\"\",\"WRAPPER\",\"<UL>\",\"#text:\\\"\\\"\"]},{\"idx\":7,\"beforeUl\":true,\"last\":false,\"inner\":\"晚间回顾\",\"childOrder\":[\"#text:\\\"Evening review\\\"\",\"WRAPPER\",\"<UL>\",\"#text:\\\"\\\"\"]}]",
+        "克隆缺陷（译文行内混入整棵子列表副本，冻结在 loading 态、内含原文英文）: 0/3 例"
+      ],
+      "detail": null
+    },
+    {
+      "name": "2b. p 内 inline <a>：wrapper 在 p 内、紧贴直属文本流之后",
+      "passed": true,
+      "evidence": [
+        "<a> 场景: {\"inP\":true,\"afterLastDirectText\":true}"
+      ],
+      "detail": null
+    },
+    {
+      "name": "2c. 外层 div 散落直属文本+子块：译文贴住直属文本流，子块独立成段",
+      "passed": true,
+      "evidence": [
+        "scatter 场景: {\"hasWrapper\":true,\"inScatter\":true,\"afterTrailingText\":true,\"innerPTranslated\":true}"
+      ],
+      "detail": null
+    },
+    {
+      "name": "2d. flex/grid 容器（含直属文本）：译文外插兄弟块 + data-ta-sibling 标记，容器子元素数不变",
+      "passed": true,
+      "evidence": [
+        "flex: {\"containerDataTa\":\"done\",\"directChildCount\":3,\"nextIsSiblingWrapper\":true,\"forMatches\":true,\"siblingHan\":true}",
+        "grid: {\"containerDataTa\":\"done\",\"directChildCount\":2,\"nextIsSiblingWrapper\":true,\"forMatches\":true,\"siblingHan\":true}"
+      ],
+      "detail": null
+    },
+    {
+      "name": "2e. 排版一致：text-indent 不传染 / 标题 font:inherit / em-strong 样式保留",
+      "passed": true,
+      "evidence": [
+        "p.indent: 原文 text-indent=32px → 译文 text-indent=0px",
+        "h2: 22px/700 → wrapper: 22px/700",
+        "译文内联元素样式: [{\"tag\":\"EM\",\"style\":\"italic/400\"},{\"tag\":\"STRONG\",\"style\":\"normal/700\"},{\"tag\":\"EM\",\"style\":\"italic/400\"},{\"tag\":\"STRONG\",\"style\":\"normal/700\"}]"
+      ],
+      "detail": null
+    },
+    {
+      "name": "10a. SET_THEME 主题即时切换（none/dashed/underline/marker/paper/blockquote/bold/mask 八档抽查）",
+      "passed": true,
+      "evidence": [
+        "逐档: none=true, dashed=true, underline=true, marker=true, paper=true, blockquote=true, bold=true, mask=true",
+        "dashed 译文观感: {\"deco\":\"none/solid\",\"color\":\"rgb(34, 34, 34)\"}"
+      ],
+      "detail": null
+    },
+    {
+      "name": "3b. restoreAll 后 wrapper/data-ta/data-ta-sibling 清除干净、原文恢复",
+      "passed": true,
+      "evidence": [
+        "还原后残留: wrappers=0 dataTa=0 sibling=0 originals=0",
+        "正文与翻译前一致: true"
+      ],
+      "detail": null
+    },
+    {
+      "name": "3. KaTeX 公式保护：.katex DOM 逐字节不变、周围文本正常翻译、token 不残留",
+      "passed": true,
+      "evidence": [
+        "KaTeX 渲染就绪: true（span.katex 数=8）",
+        "翻译前后 .katex 数量: 8 → 8，innerHTML 完全一致=true",
+        "含公式段落译文含中文: 6/6",
+        "最终可见 DOM 无 ⟪mN⟫ token: true"
+      ],
+      "detail": null
+    },
+    {
+      "name": "4. 混合语言默认直翻：英文段落有中文译文、中文段落原样（无 wrapper）、无任何开关参与",
+      "passed": true,
+      "evidence": [
+        "页面级跳过未触发: true",
+        "英文段落(3): [\"p1(原占比0) dataTa=true 译含中文=true\",\"p3(原占比0) dataTa=true 译含中文=true\",\"p5(原占比0) dataTa=true 译含中文=true\"]",
+        "中文段落(4): [\"p0(原占比1) dataTa=false\",\"p2(原占比1) dataTa=false\",\"p4(原占比1) dataTa=false\",\"p6(原占比1) dataTa=false\"]"
+      ],
+      "detail": null
+    },
+    {
+      "name": "4b. 页面 90%+ 已是目标语言：整体跳过并提示（无逐段空转）",
+      "passed": true,
+      "evidence": [
+        "GET_PAGE_STATE: sameLangPage=true reason=pageDominance error=\"页面 90% 以上已是目标语言，未翻译\"",
+        "DOM 残留 [data-ta]/wrapper=0"
+      ],
+      "detail": null
+    },
+    {
+      "name": "5. 长文（36641 字符）：全部分段翻完、进度上报至完成、静置 10s DOM 稳定（无 rewalk 死循环）",
+      "passed": true,
+      "evidence": [
+        "正文长度: 36641 chars（>5000 ✓）",
+        "progress 采样: [{\"t\":876,\"done\":0,\"total\":61}]（61 段 ≤ 单批 200 段上限 → 单包一次回填，done/total 由 0/61 直接至完成，属分包设计行为）",
+        "段落翻译完成: 60/60（含中文译文 60，错误态 0）",
+        "静置 10s DOM 签名一致: true；期间新增 console error=0"
+      ],
+      "detail": null
+    },
+    {
+      "name": "16a. TRANSLATE_PAGE 幂等：已翻译页重发 → translated:true 且 DOM 不变",
+      "passed": true,
+      "evidence": [
+        "重发响应: {\"ok\":true,\"started\":false,\"phase\":\"translated\",\"translated\":true}",
+        "重发前后 wrapper 数不变: 61 → 61"
+      ],
+      "detail": null
+    },
+    {
+      "name": "15a. 缓存写入：翻译后 GET_CACHE_STATS 条目增长、SW 日志出现 done: cached=…",
+      "passed": true,
+      "evidence": [
+        "缓存条目: {\"entries\":113,\"oldestAt\":1794879939903}",
+        "SW 批次日志样例: [TA] mwk16qis-1 done: cached=0 ok=61/61 usedServices=[deepl-free]"
+      ],
+      "detail": null
+    },
+    {
+      "name": "15b. 同页二次翻译命中缓存（SW 日志 cached>0，耗时显著缩短）",
+      "passed": true,
+      "evidence": [
+        "二次翻译用时: 1.3s（全部命中缓存时接近瞬时）",
+        "SW 最新批次日志: [TA] mwk182gh-1 done: cached=61 ok=61/61 usedServices=[]"
+      ],
+      "detail": null
+    },
+    {
+      "name": "15c. CLEAR_CACHE 生效：清后条目=0，重翻重新走网络并再次写入缓存",
+      "passed": true,
+      "evidence": [
+        "CLEAR_CACHE 后条目: {\"entries\":0,\"oldestAt\":null}",
+        "重翻后条目: {\"entries\":61,\"oldestAt\":1794880081046}"
+      ],
+      "detail": null
+    },
+    {
+      "name": "15d. 不同目标语言互不串缓存（同文本 zh-CN 与 ja 各自独立回包）",
+      "passed": true,
+      "evidence": [
+        "zh-CN 回包: \"用于跨语言检查的缓存隔离探针句子。\" via deepl-free",
+        "ja 回包: \"Cache isolation probe sentence for cross-language check.\" via deepl-free"
+      ],
+      "detail": null
+    },
+    {
+      "name": "7. 划词翻译冒烟：选句 → 右下小圆点出现 → 悬停触发 → 气泡显示中文译文",
+      "passed": true,
+      "evidence": [
+        "选区触发点 .ta-sel-dot 出现: true",
+        "气泡可见且出结果: true，.ta-sel-trans 译文: \"早期的计算机采用批处理方式运行。你提交一叠卡片，然后等待一整夜\""
+      ],
+      "detail": null
+    },
+    {
+      "name": "8. 悬停翻译冒烟：Ctrl+悬停（mouseover+ctrlKey）→ 该段下方中文译文；再次 Ctrl+悬停 → 还原",
+      "passed": true,
+      "evidence": [
+        "段落 p:nth-of-type(1) Ctrl+悬停后译文: \"欢迎阅读这篇长文。在过去的十年里，软件一直在悄然重塑普通人的工作、学习和交流方式。本页仅作为测试用例，但下文中的每段都",
+        "再次 Ctrl+悬停后 wrapper 移除: true，data-ta 清除: true"
+      ],
+      "detail": null
+    },
+    {
+      "name": "9. 悬浮球存在、点击展开菜单、“打开设置”经 OPEN_OPTIONS 打开 options 页",
+      "passed": true,
+      "evidence": [
+        "悬浮球: {\"x\":1254,\"y\":450,\"side\":\"right\"}",
+        "点击展开菜单: true，菜单项: [\"翻译侧边栏↗\",\"翻译中…\",\"仅译文\",\"主题选择▸\",\"遮罩模式：关\",\"导出双语▸\",\"文档翻译\",\"双语字幕：关\"]",
+        "菜单点“打开设置”→ options 页打开: true"
+      ],
+      "detail": null
+    }
+  ],
+  "screenshots": [
+    "tests/screenshots/01-basic-translated-full.png",
+    "tests/screenshots/02-basic-dashed-theme.png",
+    "tests/screenshots/03-restored-clean.png",
+    "tests/screenshots/04-katex-translated.png",
+    "tests/screenshots/05-mixed-translated.png",
+    "tests/screenshots/06-zh-skip.png",
+    "tests/screenshots/07-long-translated.png",
+    "tests/screenshots/08-selection-bubble.png",
+    "tests/screenshots/09-hover-translated.png",
+    "tests/screenshots/10-ball-menu.png",
+    "tests/screenshots/11-options-page.png"
+  ],
+  "swErrors": [],
+  "serviceProbe": {
+    "google": {
+      "ok": false,
+      "sample": null,
+      "tokKept": 0,
+      "err": "RATE_LIMITED:HTTP 429: https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=The+quick+brown+fox+jumps+over+the+lazy+dog."
+    },
+    "edge": {
+      "ok": false,
+      "sample": null,
+      "tokKept": 0,
+      "err": "HTTP_ERROR:HTTP 404: https://edge.microsoft.com/translate/auth"
+    },
+    "deepl-free": {
+      "ok": true,
+      "sample": "鉴于对于所有 x，都有 ⟪m1⟫ + ⟪m2⟫ = ⟪m3⟫ 成立，因此通过与几何级数的情况进行比较，可知该级数收敛。",
+      "tokKept": 3,
+      "err": null
+    },
+    "caiyun": {
+      "ok": false,
+      "sample": null,
+      "tokKept": 0,
+      "err": "BAD_RESPONSE:彩云 jwt 接口返回无效数据"
+    },
+    "youdao": {
+      "ok": false,
+      "sample": null,
+      "tokKept": 0,
+      "err": "BAD_RESPONSE:有道响应 AES 解密失败: OperationError"
+    }
+  }
+}

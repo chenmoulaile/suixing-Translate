@@ -1,0 +1,320 @@
+/* styles/interactions.css —— 交互三件套样式（v0.2 需求 10，B 所有）
+   范围（fileOwnership 定稿）：
+     1. 悬停翻译候选轮廓（.ta-hover-candidate）
+     2. 划词翻译小圆点 / logo 图标 / 气泡卡（.ta-sel-*）
+     3. 输入框翻译撤销浮条（.ta-input-toast，input-enhance.js 产物）
+   译文 wrapper 结构样式见 styles/content.css（A 负责），此处不重复定义；
+   全部选择器 ta- 前缀，避免污染宿主页面。 */
+
+/* ==================== 悬停翻译：候选轮廓 ==================== */
+/* 悬停候选段（threeInteractions 定稿值）；触发后由 JS 移除该类 */
+.ta-hover-candidate {
+  outline: 2px dashed rgba(79, 110, 242, 0.55) !important;
+  outline-offset: 2px !important;
+}
+
+/* ==================== 划词翻译：触发点 ==================== */
+
+/* mini 档：选区右下 8px 小圆点 */
+.ta-sel-dot {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4F6EF2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  z-index: 2147483647;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.12s ease;
+}
+
+.ta-sel-dot:hover {
+  transform: scale(1.25);
+}
+
+/* icon 档：选区右下 26px logo 圆钮 */
+.ta-sel-icon {
+  position: fixed;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: #4F6EF2;
+  color: #fff;
+  font: 700 13px/26px system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  text-align: center;
+  padding: 0;
+  z-index: 2147483647;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: filter 0.12s ease;
+}
+
+.ta-sel-icon:hover {
+  filter: brightness(1.10);
+}
+
+/* ==================== 划词翻译：气泡卡 ==================== */
+
+.ta-sel-bubble {
+  position: fixed;
+  max-width: min(480px, calc(100vw - 16px));
+  background: #ffffff;
+  color: #1f2328;
+  border: 1px solid #e2e5ea;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+  font: 13px/1.55 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  z-index: 2147483647;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ta-sel-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px 6px 10px;
+  border-bottom: 1px solid #eceff2;
+  white-space: nowrap;
+}
+
+/* 语言对徽标：EN → 简体中文 */
+.ta-sel-lang {
+  font-size: 11px;
+  color: #5b6470;
+  background: #f0f2f5;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ta-sel-btn {
+  border: 0;
+  background: transparent;
+  color: #454c55;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+
+.ta-sel-btn:hover {
+  background: #eef1f6;
+}
+
+.ta-sel-body {
+  padding: 10px 12px;
+  max-height: 40vh;
+  overflow: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* 译文行（textContent 回填，不解析 HTML） */
+.ta-sel-trans {
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+/* 原文回显行（仅单词查询且 showOriginal 开启时可见） */
+.ta-sel-orig {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d9dde3;
+  color: #6b7280;
+  font-size: 12px;
+  white-space: pre-line;
+}
+
+/* loading 态：旋转圈 + 文案 */
+.ta-sel-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8a9099;
+  font-size: 12px;
+}
+
+.ta-sel-spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #d6dbe2;
+  border-top-color: #4F6EF2;
+  border-radius: 50%;
+  animation: ta-sel-spin 0.8s linear infinite;
+}
+
+@keyframes ta-sel-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 错误态：错误文案 + 重试按钮 */
+.ta-sel-error {
+  color: #d93025;
+  font-size: 12px;
+  white-space: pre-line;
+}
+
+.ta-sel-body .ta-sel-retry {
+  margin-top: 8px;
+}
+
+.ta-sel-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid #eceff2;
+}
+
+.ta-sel-note {
+  font-size: 11px;
+  color: #9aa0a6;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ⋯ 菜单（本次 / 本站 / 永久 三档禁用） */
+.ta-sel-menu {
+  position: absolute;
+  right: 6px;
+  top: 34px;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  padding: 4px;
+  min-width: 128px;
+}
+
+.ta-sel-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: #333a44;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ta-sel-menu button:hover {
+  background: #eef1f6;
+}
+
+/* ==================== 输入框翻译：撤销浮条 ==================== */
+/* input-enhance.js 在译文回填成功后显示 2.5s，点「撤销」恢复原文 */
+
+.ta-input-toast {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #2b2f36;
+  color: #e8eaed;
+  font: 12px/1.4 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  padding: 6px 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 2147483647;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ta-input-toast-undo {
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.ta-input-toast-undo:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* ==================== 通用 ==================== */
+
+.ta-hide {
+  display: none !important;
+}
+
+/* ==================== 暗色模式适配 ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .ta-sel-bubble {
+    background: #22262c;
+    color: #e6e8eb;
+    border-color: #3a4048;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  }
+  .ta-sel-head,
+  .ta-sel-foot {
+    border-color: #33383f;
+  }
+  .ta-sel-lang {
+    color: #a8b0ba;
+    background: #2e333a;
+  }
+  .ta-sel-btn {
+    color: #c6ccd4;
+  }
+  .ta-sel-btn:hover {
+    background: #2e333a;
+  }
+  .ta-sel-orig {
+    color: #9aa3ad;
+    border-top-color: #3a4048;
+  }
+  .ta-sel-loading {
+    color: #8a9099;
+  }
+  .ta-sel-spinner {
+    border-color: #3a4048;
+    border-top-color: #7f97f5;
+  }
+  .ta-sel-error {
+    color: #ff7b72;
+  }
+  .ta-sel-menu {
+    background: #22262c;
+    border-color: #3a4048;
+  }
+  .ta-sel-menu button {
+    color: #c6ccd4;
+  }
+  .ta-sel-menu button:hover {
+    background: #2e333a;
+  }
+}
+
+/* ==================== 打印隐藏 ==================== */
+
+@media print {
+  .ta-sel-dot,
+  .ta-sel-icon,
+  .ta-sel-bubble,
+  .ta-sel-menu,
+  .ta-input-toast {
+    display: none !important;
+  }
+}

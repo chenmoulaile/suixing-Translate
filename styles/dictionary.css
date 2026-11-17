@@ -1,0 +1,96 @@
+/* styles/dictionary.css —— AI 词典卡（划词气泡内的富卡，D 所有）
+   仅作用于 .ta-sel-bubble 内的 .ta-dict-card，避免污染宿主页面。
+   明暗通用：尽量用 currentColor + 半透明表面，随气泡主题自适应（气泡浅色
+   #ffffff / 暗色 #22262c 下均清晰）。保持紧凑，作为纯译文下方追加块。 */
+
+.ta-sel-bubble .ta-dict-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(127, 127, 127, 0.28);
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.06);
+  color: currentColor;
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* header：单词 + 音标 + 词性徽标 + 🔊 */
+.ta-sel-bubble .ta-dict-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ta-sel-bubble .ta-dict-word {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ta-sel-bubble .ta-dict-phonetic {
+  font-size: 12px;
+  opacity: 0.62;
+}
+
+.ta-sel-bubble .ta-dict-pos {
+  font-size: 11px;
+  font-style: italic;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.16);
+  opacity: 0.9;
+}
+
+.ta-sel-bubble .ta-dict-speak {
+  margin-left: auto;
+  border: 0;
+  background: rgba(127, 127, 127, 0.14);
+  color: currentColor;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: none;
+}
+
+.ta-sel-bubble .ta-dict-speak:hover {
+  background: rgba(127, 127, 127, 0.26);
+}
+
+/* 中文释义行 */
+.ta-sel-bubble .ta-dict-meaning {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+/* 例句：每例两行（外文斜体 / 中文译文弱显） */
+.ta-sel-bubble .ta-dict-examples {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(127, 127, 127, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ta-sel-bubble .ta-dict-ex-foreign {
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.ta-sel-bubble .ta-dict-ex-translated {
+  font-size: 12px;
+  opacity: 0.66;
+  margin-top: 1px;
+}
+
+/* 打印隐藏（气泡本已隐藏，双保险） */
+@media print {
+  .ta-sel-bubble .ta-dict-card {
+    display: none !important;
+  }
+}

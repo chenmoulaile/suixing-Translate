@@ -1,0 +1,71 @@
+/* styles/dual-column.css —— 双栏 / 并排双语排版（opt-in，settings.targetStyle.layout==='dual'）
+   仅在 injector.js 给 wrapper 写入 data-ta-layout="dual" 时生效；默认（block）完全无影响。
+   DOM（injector.js createWrapper + setupDualColumn，NORMAL/FORCED 分支）：
+     <el data-ta data-ta-dual="1">
+       <span class="ta-target-wrapper" data-ta-layout="dual" dir="auto">
+         <span class="ta-original ta-original-inline">…原文…</span>
+         <span class="ta-target-inner">…译文…</span>
+       </span>
+     </el>
+   wrapper 作为 grid 容器，左列原文、右列译文并排；中间一条细分隔线。
+   不覆盖主题背景/边框色——24 档主题样式（styles/themes.css）照常作用于 .ta-target-inner。 */
+
+/* 两列网格容器：原文列 1fr / 译文列 1fr，起点对齐，列间留白 */
+.ta-target-wrapper[data-ta-layout="dual"] {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+}
+
+/* 原文列：弱化 + 右侧细分隔线（靠 padding/border 实现"中间分隔线"） */
+.ta-target-wrapper[data-ta-layout="dual"] > .ta-original {
+  display: block;
+  min-width: 0;
+  color: #6b7280;                 /* 原文弱化（中性灰），主题色仅作用于译文列 */
+  opacity: 0.92;
+  padding-right: 16px;
+  border-right: 1px solid rgba(128, 128, 128, 0.35);
+  box-sizing: border-box;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+/* 译文列：继承主题对 .ta-target-inner 的着色/边框，仅补充换行与断词 */
+.ta-target-wrapper[data-ta-layout="dual"] > .ta-target-inner {
+  display: block;
+  min-width: 0;
+  padding-left: 2px;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+
+/* 仅译文模式：原文列被 ta-hide-original 隐藏后仅剩译文列——单列铺满而非残留半宽空列 */
+.ta-target-wrapper[data-ta-layout="dual"]:has(> .ta-original.ta-hide-original) {
+  grid-template-columns: 1fr;
+}
+
+/* 暗色适配：原文列弱化色提亮，分隔线更柔和 */
+@media (prefers-color-scheme: dark) {
+  .ta-target-wrapper[data-ta-layout="dual"] > .ta-original {
+    color: #9aa4ad;
+    border-right-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* 窄屏回落：单列（原文在上、译文在下），避免两列过窄 */
+@media (max-width: 640px) {
+  .ta-target-wrapper[data-ta-layout="dual"] {
+    grid-template-columns: 1fr;
+  }
+  .ta-target-wrapper[data-ta-layout="dual"] > .ta-original {
+    padding-right: 0;
+    padding-bottom: 8px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+  }
+  .ta-target-wrapper[data-ta-layout="dual"] > .ta-target-inner {
+    padding-left: 0;
+  }
+}

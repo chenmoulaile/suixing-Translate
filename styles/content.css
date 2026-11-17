@@ -1,0 +1,120 @@
+/* styles/content.css —— 随行翻译（ParaTranslate）内容样式（v0.2 基础段重做）
+   全部使用 ta- 前缀，避免污染宿主页面；注入结构（content/injector.js）：
+     <span class="ta-target-wrapper" data-ta-theme="dashed" dir="auto">
+       <span class="ta-target-inner">…译文…</span>
+     </span>
+   行内形态（data-ta-inline="1"）：
+     <span class="ta-target-wrapper" data-ta-inline="1">
+       <span class="ta-original-inline">…原文…</span>
+       <span class="ta-target-inner">…译文…</span>
+     </span>
+   原位包裹：<span class="ta-original">…直属文本…</span>（仅译文模式加 .ta-hide-original 隐藏）
+   自定义样式：<style id="ta-user-css">（settings.targetStyle.customCss）
+   分工（v0.2 CSS 分文件，manifest css 顺序 content.css → themes.css → ball.css →
+   interactions.css）：本文件只留基础结构/排版/loading/error/暗色基础态；
+   24 档主题在 C 的 styles/themes.css；悬浮球在 C 的 styles/ball.css；
+   悬停/划词在 B 的 styles/interactions.css。 */
+
+/* ==================== 基础结构 ==================== */
+
+.ta-target-wrapper {
+  display: block !important;
+  margin: 0.35em 0 0 0;
+  padding: 0;
+  border: 0;
+  font: inherit;              /* 关键：family/size/weight/style/stretch/line-height 全量继承，
+                                 修复 v0.1 在 h1-h6/em/strong 上下文中丢粗体/斜体的问题 */
+  letter-spacing: inherit;    /* 字距跟随上下文（v0.1 硬重置为 normal） */
+  text-align: inherit;
+  text-transform: inherit;
+  text-indent: 0;             /* 译文顶格，不吃段落首行缩进 */
+  color: inherit;
+  background: transparent;
+  text-shadow: none;
+  box-shadow: none;
+  white-space: normal;
+  list-style: none;
+  min-width: 0;
+}
+
+.ta-target-wrapper > .ta-target-inner {
+  display: block;
+  white-space: pre-line; /* 译文中的 \n 换行可见 */
+  margin: 0;
+  padding: 0;
+}
+
+/* 行内形态：unit.el 本身为行内元素时 wrapper 收为 inline-block，
+   内部原文行/译文行上下两块（低频路径：强制根命中行内选择器、悬停目标无块级宿主） */
+.ta-target-wrapper[data-ta-inline="1"] {
+  display: inline-block !important;
+  vertical-align: bottom;
+}
+
+.ta-target-wrapper[data-ta-inline="1"] > .ta-original-inline,
+.ta-target-wrapper[data-ta-inline="1"] > .ta-target-inner {
+  display: block;
+}
+
+/* 原文原位包裹（replace 模式注入时创建；仅译文模式惰性补建）；
+   位于原文单元内、与 wrapper 平级，保持内联避免扰动排版 */
+.ta-original {
+  display: inline;
+}
+
+/* 行内形态的原文行（默认块化规则见上方 data-ta-inline 作用域） */
+.ta-original-inline {
+  display: inline;
+}
+
+/* 仅译文模式隐藏原文：类加在 .ta-original / .ta-original-inline 上，
+   不影响图片等非文本子元素 */
+.ta-hide-original {
+  display: none !important;
+}
+
+/* ==================== loading / error 态 ==================== */
+/* loading 三档（settings.targetStyle.loading）：默认 spinner（下方闪烁"…"）；
+   text=静态省略号；none=无占位。档位经 documentElement[data-ta-loading] 根属性切换。 */
+
+.ta-target-wrapper.ta-loading::after {
+  content: "…";
+  color: #999;
+  animation: ta-blink 1.2s ease-in-out infinite;
+}
+
+/* text 档：静态省略号 */
+[data-ta-loading="text"] .ta-target-wrapper.ta-loading::after {
+  animation: none;
+}
+
+/* none 档：无占位 */
+[data-ta-loading="none"] .ta-target-wrapper.ta-loading::after {
+  content: none;
+}
+
+@keyframes ta-blink {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 1; }
+}
+
+.ta-target-wrapper.ta-error > .ta-target-inner {
+  color: #d93025;
+  font-size: 0.92em;
+}
+
+/* ==================== 暗色模式适配（基础态） ==================== */
+/* 24 档主题各自的暗色适配在 styles/themes.css */
+
+@media (prefers-color-scheme: dark) {
+  .ta-target-wrapper.ta-loading::after {
+    color: #8a8f98;
+  }
+  .ta-target-wrapper.ta-error > .ta-target-inner {
+    color: #ff7b72;
+  }
+}
+
+/* ==================== 公式占位符 ==================== */
+/* 公式占位符（⟪mN⟫ token）由 content/formula.js 以普通文本节点存在于原文流中，
+   不加任何类、无需样式；翻译完成后公式节点原位回归。 deliberately 无样式段。 */

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>随行翻译 · 设置</title>
+  <link rel="stylesheet" href="options.css">
+  <!-- 预览全部样式（② 区按钮）需要真实主题 CSS：content.css 提供基础结构，themes.css 提供 24 档 -->
+  <link rel="stylesheet" href="../styles/content.css">
+  <link rel="stylesheet" href="../styles/themes.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- 左侧锚点导航 -->
+  <aside class="side">
+    <div class="brand">
+      <img src="../assets/icons/icon48.png" alt="">
+      <div class="brand-text">
+        <b>随行翻译</b>
+        <span id="verBadge" class="ver-badge"></span>
+      </div>
+      <button id="btnQuickTranslatePage" class="ghost-btn small" type="button" title="翻译设置页">文A</button>
+    </div>
+    <nav id="nav">
+      <a href="#sec-basic">① 基础</a>
+      <a href="#sec-style">② 译文样式</a>
+      <a href="#sec-service">③ 服务与密钥</a>
+      <a href="#sec-site">④ 网站规则</a>
+      <a href="#sec-advanced">⑤ 高级</a>
+      <a href="#sec-ai">⑦ AI 与扩展场景</a>
+      <a href="#sec-page-translate">⑨ 设置页翻译</a>
+      <a href="#sec-about">⑧ 关于</a>
+    </nav>
+  </aside>
+
+  <!-- 右侧表单 -->
+  <main class="content">
+
+    <!-- ① 基础 -->
+    <section id="sec-basic" class="card">
+      <h2>① 基础</h2>
+
+      <div class="row">
+        <label for="optLang">目标语言</label>
+        <select id="optLang"></select>
+        <p class="tip">所有翻译动作的默认目标语言。</p>
+      </div>
+
+      <div class="row">
+        <label>默认翻译模式</label>
+        <div class="radio-line">
+          <label class="radio"><input type="radio" name="optMode" value="bilingual"><span>双语对照</span></label>
+          <label class="radio"><input type="radio" name="optMode" value="translation-only"><span>仅译文</span></label>
+        </div>
+        <p class="tip">双语对照：译文插入原文下方；仅译文：隐藏原文。</p>
+      </div>
+
+      <div class="row">
+        <label>默认范围</label>
+        <div class="radio-line">
+          <label class="radio"><input type="radio" name="optScope" value="smart"><span>智能（排除导航页脚）</span></label>
+          <label class="radio"><input type="radio" name="optScope" value="full"><span>全文</span></label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>译文位置</label>
+        <div class="radio-line">
+          <label class="radio"><input type="radio" name="optPosition" value="after"><span>原文下方（双语对照）</span></label>
+          <label class="radio"><input type="radio" name="optPosition" value="replace"><span>替换原文</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 译文样式 -->
+    <section id="sec-style" class="card">
+      <h2>② 译文样式</h2>
+
+      <div class="row">
+        <label>主题</label>
+        <div id="themeGrid" class="theme-grid"><!-- 24 档主题由 options.js 生成 --></div>
+        <div class="inline">
+          <button type="button" id="btnPreviewThemes" class="ghost-btn">预览全部样式</button>
+          <span class="tip inline-tip">逐档真实渲染（加载扩展 themes.css）；「模糊(学习)」「透明」档需悬停预览行才能看清。</span>
+        </div>
+        <div id="themePreview" class="theme-preview" hidden><!-- 预览行由 options.js 生成 --></div>
+        <p class="tip"><b>遮罩学习模式</b>两种用法：① 上表选择「模糊(学习)」档，仅模糊译文、悬停单条译文变清晰；② 全页开关绑定快捷键 <code>toggle-mask</code>（在 <code>chrome://extensions/shortcuts</code> 设置，无默认键），所有译文统一模糊/还原，即时生效不发请求。</p>
+      </div>
+
+      <div class="row">
+        <label>等待动画</label>
+        <div class="radio-line">
+          <label class="radio"><input type="radio" name="optLoading" value="spinner"><span>闪烁圆点</span></label>
+          <label class="radio"><input type="radio" name="optLoading" value="text"><span>静态省略号</span></label>
+          <label class="radio"><input type="radio" name="optLoading" value="none"><span>无</span></label>
+        </div>
+        <p class="tip">译文返回前原文下方占位符的样式（settings.targetStyle.loading）。</p>
+      </div>
+
+      <div class="row">
+        <label for="optColorText">自定义颜色</label>
+        <div class="inline">
+          <input type="color" id="optColor" value="#999999">
+          <input type="text" id="optColorText" placeholder="留空使用默认色（#999）" spellcheck="false">
+          <button type="button" id="btnColorReset" class="ghost-btn">默认</button>
+        </div>
+        <p class="tip">主题边框/文字的颜色变量（--ta-c），留空使用默认。</p>
+      </div>
+
+      <div class="row">
+        <label for="optFontSize">自定义字号</label>
+        <div class="inline">
+          <input type="number" id="optFontSize" min="1" max="96" step="1" placeholder="留空使用默认">
+          <span class="unit">px</span>
+          <button type="button" id="btnFontSizeReset" class="ghost-btn">默认</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="optCustomCss">自定义 CSS</label>
+        <textarea id="optCustomCss" rows="5" spellcheck="false" placeholder="非空时注入为 &lt;style id=&quot;ta-user-css&quot;&gt;，可修复特定站点错乱"></textarea>
+      </div>
+    </section>
+
+    <!-- ③ 服务与密钥 -->
+    <section id="sec-service" class="card">
+      <h2>③ 服务与密钥</h2>
+
+      <div class="row">
+        <label for="optPrimary">主服务</label>
+        <select id="optPrimary"></select>
+        <p class="tip">「自动（默认链）」按下方降级链顺序依次尝试；显式指定主服务失败时不降级（原样可见）。</p>
+      </div>
+
+      <div class="row">
+        <label>降级链</label>
+        <div id="chainList" class="chain-list"><!-- 由 options.js 生成 --></div>
+        <p class="tip">勾选服务加入降级链，↑↓ 调整优先级；当前服务对剩余失败段落译完后，下一个服务只续译失败项。免 key 服务默认全可用；需 key 的服务配置好密钥后才会出现在列表里。</p>
+      </div>
+
+      <!-- DeepL API 卡片 -->
+      <div class="svc-card">
+        <div class="svc-head">
+          <b>DeepL API</b>
+          <span id="deeplKeyBadge" class="badge"></span>
+          <button type="button" id="btnDeeplClear" class="ghost-btn small">清除已存密钥</button>
+        </div>
+        <div class="svc-body">
+          <div class="row">
+            <label for="deeplGenre">类型</label>
+            <select id="deeplGenre">
+              <option value="api-free">api-free（官方免费申请）</option>
+              <option value="api-pro">api-pro（官方付费）</option>
+              <option value="deeplx">DeepLX（自建/公共端点）</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="deeplAuthKey">密钥 authKey</label>
+            <input type="password" id="deeplAuthKey" autocomplete="off" placeholder="">
+            <p class="tip" id="deeplKeyTip">保存后 UI 永远显示 ***，不回显明文；留空保持不变。</p>
+          </div>
+          <div class="row">
+            <label for="deeplProxy">代理地址</label>
+            <input type="url" id="deeplProxy" spellcheck="false" placeholder="留空使用官方地址">
+            <p class="tip">整体替换请求 URL（api-free/api-pro/DeepLX 三类均生效）。</p>
+          </div>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="deeplSplit"><span>splitSentences（按句切分长文本）</span></label>
+          </div>
+          <p class="tip">选 api-free / api-pro 时必须填写官方 authKey；选 DeepLX 时密钥可空（端点需要鉴权时才填，作为 Bearer 发送）。</p>
+        </div>
+      </div>
+
+      <!-- OpenAI 卡片 -->
+      <div class="svc-card">
+        <div class="svc-head">
+          <b>OpenAI（兼容端点）</b>
+          <span id="openaiKeyBadge" class="badge"></span>
+          <button type="button" id="btnOpenaiClear" class="ghost-btn small">清除已存密钥</button>
+        </div>
+        <div class="svc-body">
+          <div class="row">
+            <label for="openaiBaseUrl">Base URL</label>
+            <input type="url" id="openaiBaseUrl" spellcheck="false" placeholder="https://api.openai.com/v1">
+            <p class="tip">任意 OpenAI 兼容 chat/completions 端点（DeepSeek / 中转等）。</p>
+          </div>
+          <div class="row">
+            <label>域名授权</label>
+            <div class="inline">
+              <button type="button" id="btnOpenaiAuth" class="ghost-btn">授权该域名</button>
+              <span id="openaiAuthTip" class="tip inline-tip"></span>
+            </div>
+            <p class="tip">Base URL 主机不是 api.openai.com 时需授权浏览器访问该域名（optional_host_permissions）。</p>
+          </div>
+          <div class="row">
+            <label for="openaiModel">模型 model</label>
+            <input type="text" id="openaiModel" spellcheck="false" placeholder="gpt-4o-mini">
+          </div>
+          <div class="row">
+            <label for="openaiApiKey">密钥 apiKey</label>
+            <input type="password" id="openaiApiKey" autocomplete="off" placeholder="">
+            <p class="tip">保存后 UI 永远显示 ***，不回显明文；留空保持不变。</p>
+          </div>
+          <div class="row">
+            <label for="openaiTemp">temperature</label>
+            <input type="number" id="openaiTemp" min="0" max="2" step="0.1" class="narrow">
+          </div>
+          <div class="row">
+            <label for="openaiPrompt">System Prompt</label>
+            <textarea id="openaiPrompt" rows="4" spellcheck="false" placeholder="留空使用内置翻译模板（逐段请求，保留换行/编号/占位符）"></textarea>
+            <p class="tip">非空时整体替换默认模板。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Claude 卡片 -->
+      <div class="svc-card">
+        <div class="svc-head">
+          <b>Claude（Anthropic）</b>
+          <span id="claudeKeyBadge" class="badge"></span>
+          <button type="button" id="btnClaudeClear" class="ghost-btn small">清除已存密钥</button>
+        </div>
+        <div class="svc-body">
+          <div class="row">
+            <label for="claudeBaseUrl">Base URL</label>
+            <input type="url" id="claudeBaseUrl" spellcheck="false" placeholder="https://api.anthropic.com/v1">
+            <div class="inline">
+              <button type="button" id="btnClaudeAuth" class="ghost-btn">授权该域名</button>
+              <span id="claudeAuthTip" class="tip inline-tip"></span>
+            </div>
+          </div>
+          <div class="row">
+            <label for="claudeModel">模型 model</label>
+            <input type="text" id="claudeModel" spellcheck="false" placeholder="claude-3-5-sonnet-latest">
+          </div>
+          <div class="row">
+            <label for="claudeApiKey">密钥 apiKey</label>
+            <input type="password" id="claudeApiKey" autocomplete="off" placeholder="">
+            <p class="tip">保存后 UI 显示 ***，留空保持不变。</p>
+          </div>
+          <div class="row inline-row">
+            <span class="lbl2">temperature</span>
+            <input type="number" id="claudeTemp" min="0" max="2" step="0.1" class="narrow">
+            <span class="lbl2">maxTokens</span>
+            <input type="number" id="claudeMaxTokens" min="1" step="1" class="narrow">
+          </div>
+        </div>
+      </div>
+
+      <!-- Gemini 卡片 -->
+      <div class="svc-card">
+        <div class="svc-head">
+          <b>Google Gemini</b>
+          <span id="geminiKeyBadge" class="badge"></span>
+          <button type="button" id="btnGeminiClear" class="ghost-btn small">清除已存密钥</button>
+        </div>
+        <div class="svc-body">
+          <div class="row">
+            <label for="geminiBaseUrl">Base URL</label>
+            <input type="url" id="geminiBaseUrl" spellcheck="false" placeholder="https://generativelanguage.googleapis.com/v1beta">
+            <div class="inline">
+              <button type="button" id="btnGeminiAuth" class="ghost-btn">授权该域名</button>
+              <span id="geminiAuthTip" class="tip inline-tip"></span>
+            </div>
+          </div>
+          <div class="row">
+            <label for="geminiModel">模型 model</label>
+            <input type="text" id="geminiModel" spellcheck="false" placeholder="gemini-2.0-flash">
+          </div>
+          <div class="row">
+            <label for="geminiApiKey">密钥 apiKey</label>
+            <input type="password" id="geminiApiKey" autocomplete="off" placeholder="">
+            <p class="tip">保存后 UI 显示 ***，留空保持不变。</p>
+          </div>
+          <div class="row inline-row">
+            <span class="lbl2">temperature</span>
+            <input type="number" id="geminiTemp" min="0" max="2" step="0.1" class="narrow">
+          </div>
+        </div>
+      </div>
+
+      <!-- DeepSeek 卡片 -->
+      <div class="svc-card">
+        <div class="svc-head">
+          <b>DeepSeek</b>
+          <span id="deepseekKeyBadge" class="badge"></span>
+          <button type="button" id="btnDeepseekClear" class="ghost-btn small">清除已存密钥</button>
+        </div>
+        <div class="svc-body">
+          <div class="row">
+            <label for="deepseekBaseUrl">Base URL</label>
+            <input type="url" id="deepseekBaseUrl" spellcheck="false" placeholder="https://api.deepseek.com/v1">
+            <div class="inline">
+              <button type="button" id="btnDeepseekAuth" class="ghost-btn">授权该域名</button>
+              <span id="deepseekAuthTip" class="tip inline-tip"></span>
+            </div>
+          </div>
+          <div class="row">
+            <label for="deepseekModel">模型 model</label>
+            <input type="text" id="deepseekModel" spellcheck="false" placeholder="deepseek-chat">
+          </div>
+          <div class="row">
+            <label for="deepseekApiKey">密钥 apiKey</label>
+            <input type="password" id="deepseekApiKey" autocomplete="off" placeholder="">
+            <p class="tip">保存后 UI 显示 ***，留空保持不变。</p>
+          </div>
+          <div class="row inline-row">
+            <span class="lbl2">temperature</span>
+            <input type="number" id="deepseekTemp" min="0" max="2" step="0.1" class="narrow">
+          </div>
+          <div class="row">
+            <label for="deepseekPrompt">System Prompt</label>
+            <textarea id="deepseekPrompt" rows="3" spellcheck="false" placeholder="留空使用内置翻译模板"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ollama 卡片（本地服务，无需密钥） -->
+      <div class="svc-card">
+        <div class="svc-head"><b>本地 Ollama（无需密钥）</b></div>
+        <div class="svc-body">
+          <div class="row">
+            <label for="ollamaBaseUrl">Base URL</label>
+            <input type="url" id="ollamaBaseUrl" spellcheck="false" placeholder="http://localhost:11434">
+            <div class="inline">
+              <button type="button" id="btnOllamaAuth" class="ghost-btn">授权该域名</button>
+              <span id="ollamaAuthTip" class="tip inline-tip"></span>
+            </div>
+            <p class="tip">本地运行的 Ollama，无需密钥；首次使用需在 Ollama 端允许跨域访问（OLLAMA_ORIGINS）。</p>
+          </div>
+          <div class="row">
+            <label for="ollamaModel">模型 model</label>
+            <input type="text" id="ollamaModel" spellcheck="false" placeholder="llama3.1:8b">
+          </div>
+          <div class="row inline-row">
+            <span class="lbl2">temperature</span>
+            <input type="number" id="ollamaTemp" min="0" max="2" step="0.1" class="narrow">
+          </div>
+          <div class="row">
+            <label for="ollamaPrompt">System Prompt</label>
+            <textarea id="ollamaPrompt" rows="3" spellcheck="false" placeholder="留空使用内置翻译模板"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 免 key 服务说明行 -->
+      <div class="svc-card">
+        <div class="svc-head"><b>以下服务无需密钥</b></div>
+        <div class="svc-body">
+          <div class="nokey-list">
+            <div class="nokey-row"><b>谷歌翻译</b><span>translate.googleapis.com 免费接口，默认链首位</span></div>
+            <div class="nokey-row"><b>微软翻译</b><span>Edge 匿名 JWT，免费</span></div>
+            <div class="nokey-row"><b>DeepL（免费）</b><span>oneshot 免费接口，限速严格（429 不自动重试），不支持繁体中文目标</span></div>
+            <div class="nokey-row"><b>彩云小译</b><span>内置公开测试 token，支持 zh/ja/ko/es/fr 目标</span></div>
+            <div class="nokey-row"><b>有道翻译</b><span>webfanyi 签名接口，免费</span></div>
+            <div class="nokey-row"><b>讯飞翻译</b><span>免费接口，仅支持译入简体中文</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ 网站规则 -->
+    <section id="sec-site" class="card">
+      <h2>④ 网站规则</h2>
+
+      <div class="row">
+        <label for="optExcluded">永不翻译的网址</label>
+        <textarea id="optExcluded" rows="4" spellcheck="false" placeholder="每行一条通配，例如：&#10;*://example.com/*&#10;docs.python.org"></textarea>
+        <p class="tip">纯域名只比 hostname；含 * 按通配符；完整 URL 全等。</p>
+      </div>
+
+      <div class="row">
+        <label for="optIncluded">强制翻译的网址</label>
+        <textarea id="optIncluded" rows="4" spellcheck="false" placeholder="每行一条通配；非空时仅这些站点会被翻译"></textarea>
+      </div>
+
+      <div class="row">
+        <label>排除语言（不翻译该语言的段落）</label>
+        <div id="langExcGroup" class="check-grid"></div>
+      </div>
+
+      <div class="row">
+        <label>包含语言（仅收集这些语言的段落，留空不限制）</label>
+        <div id="langIncGroup" class="check-grid"></div>
+      </div>
+
+      <div class="row">
+        <label>内置站点规则（只读）</label>
+        <textarea id="builtinRulesView" rows="9" readonly spellcheck="false"></textarea>
+        <div class="inline">
+          <button type="button" id="btnRuleSkeleton" class="ghost-btn">插入当前站点规则骨架</button>
+          <button type="button" id="btnRulesExport" class="ghost-btn">导出规则 JSON</button>
+        </div>
+        <p class="tip">骨架按当前站点域名生成（pattern + 常用字段示例），粘贴进下方用户规则修改；导出下载内置规则与用户规则的完整 JSON。新字段 <code>theme</code> 可按站点固定译文主题（如 <code>"theme": "paper"</code>）。</p>
+      </div>
+
+      <div class="row">
+        <label for="optUserRules">用户站点规则（JSON）</label>
+        <textarea id="optUserRules" rows="8" spellcheck="false" placeholder='[
+  { "match": "example.com",
+    "selectors": [".article-body"],
+    "selectors.add": [".comment-body"],
+    "selectors.remove": [],
+    "excludeSelectors": ["pre", "code"],
+    "additionalExcludeSelectors": [] }
+]'></textarea>
+        <p id="userRulesMsg" class="tip"></p>
+        <p class="tip">保存前做 JSON 校验；内置规则 twitter/x.com、github.com、news.ycombinator.com 之后合并，同名字段用户规则整体覆盖，additional* 追加，selectors.add / selectors.remove 做增量。</p>
+      </div>
+    </section>
+
+    <!-- ⑤ 高级 -->
+    <section id="sec-advanced" class="card">
+      <h2>⑤ 高级</h2>
+
+      <div class="row">
+        <label>段落阈值</label>
+        <div class="inline">
+          <span class="lbl2">最短字符数</span>
+          <input type="number" id="optMinText" min="0" step="1" class="narrow">
+          <span class="lbl2">最短词数</span>
+          <input type="number" id="optMinWord" min="1" step="1" class="narrow">
+        </div>
+        <p class="tip">直属文本低于阈值的段落不收集（默认 4 字符 / 1 词）。</p>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="optInputEnabled"><span>输入框翻译（三连空格触发）</span></label>
+        <div class="inline sub">
+          <span class="lbl2">间隔阈值</span>
+          <input type="number" id="optGapMs" min="150" max="1000" step="50" class="narrow">
+          <span class="unit">ms</span>
+        </div>
+        <p class="tip">输入框内连续三次空格（相邻间隔均 ≤ 阈值，默认 200ms）把内容整段译成目标语言；替换后出现撤销浮条（点「撤销」还原，Ctrl+Z 也可）。斜杠命令：<code>/ja 你好</code> 后三连 → 仅命令后内容译为日语；<code>//内容</code> → 仅命令后内容按默认目标语言翻译；替换前保留命令前缀原样。译文与原文相同时不替换并提示检查目标语言。可用快捷键 <code>translate-input-box</code>（Alt+I 可自行绑定，无默认键）直接翻译当前聚焦的输入框。</p>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="optHover"><span>悬停翻译（默认开启）</span></label>
+        <div class="inline sub">
+          <span class="lbl2">触发方式</span>
+          <select id="optHoverTrigger">
+            <option value="holdKey">修饰键按住 + 悬停</option>
+            <option value="pressHold">按住停留</option>
+            <option value="hover">纯悬停</option>
+          </select>
+          <span class="lbl2" id="holdKeyLbl">修饰键</span>
+          <select id="optHoldKey">
+            <option value="ctrl">Ctrl</option>
+            <option value="alt">Alt</option>
+            <option value="shift">Shift</option>
+            <option value="meta">Meta/Win</option>
+          </select>
+          <span class="lbl2">按住时长</span>
+          <input type="number" id="optPressHoldMs" min="200" max="3000" step="100" class="narrow">
+          <span class="unit">ms</span>
+        </div>
+        <p class="tip">悬停候选段落先显示虚线轮廓；触发后译文内嵌在该段原文下方（与整页翻译同款排版）。修饰键按住再悬停已翻译段落 = 还原该段。「纯悬停」模式有 300ms 防扫过误触延迟。</p>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="optSelEnabled"><span>划词翻译（选中文字后出现触发钮）</span></label>
+        <div class="inline sub">
+          <span class="lbl2">样式</span>
+          <select id="optSelTrigger">
+            <option value="mini">小圆点（12px）</option>
+            <option value="icon">图标按钮（32px）</option>
+            <option value="direct">选完即弹气泡</option>
+          </select>
+          <span class="lbl2">触发</span>
+          <select id="optSelAction">
+            <option value="hover">悬停触发</option>
+            <option value="click">点击触发</option>
+          </select>
+          <label class="check sub-check"><input type="checkbox" id="optSelShowOriginal"><span>气泡内回显原文（单词查询时）</span></label>
+        </div>
+        <textarea id="optSelDisabled" rows="2" readonly spellcheck="false" placeholder="已禁用划词的站点（在气泡「⋯」菜单中逐档添加）"></textarea>
+        <p class="tip">气泡卡支持复制、朗读（本地 speechSynthesis）、重试与三档禁用（本次 / 本站 / 永久）。整句仅显示译文；单词查询可回显原文。输入框与代码块内选区不触发，避免与输入框翻译打架。</p>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="optFloatBall"><span>显示悬浮球（页面左/右缘中部圆形按钮）</span></label>
+        <div class="inline sub">
+          <span class="lbl2">位置</span>
+          <select id="optBallPos">
+            <option value="right">右缘</option>
+            <option value="left">左缘</option>
+          </select>
+          <span class="lbl2">不透明度</span>
+          <input type="number" id="optBallOpacity" min="0" max="100" step="5" class="narrow">
+          <span class="unit">%</span>
+          <span class="lbl2">悬停展开延迟</span>
+          <input type="number" id="optBallHoverDelay" min="0" max="2000" step="50" class="narrow">
+          <span class="unit">ms</span>
+        </div>
+        <label for="optBallBlocked">悬浮球黑名单（每行一条通配，命中站点不挂载悬浮球）</label>
+        <textarea id="optBallBlocked" rows="3" spellcheck="false" placeholder="例如：&#10;*://mail.example.com/*&#10;docs.python.org"></textarea>
+        <p class="tip">点击展开菜单（翻译本页 / 仅译文 / 主题选择 / 遮罩模式 / 导出双语 / 打开设置）；按住拖动可移动位置并记忆；全屏播放视频与打印时自动隐藏。首次使用前 5 次悬停会有「点击翻译本页」引导。</p>
+      </div>
+
+      <div class="row">
+        <label for="optExportFmt">导出双语默认格式</label>
+        <select id="optExportFmt">
+          <option value="html">网页快照（HTML，可离线打开）</option>
+          <option value="markdown">Markdown</option>
+          <option value="txt">纯文本（TXT）</option>
+        </select>
+        <p class="tip">悬浮球「导出双语」菜单默认选中该格式；popup「更多」面板可三选一。导出按 DOM 顺序逐段「原文 + 译文」成对。</p>
+      </div>
+
+      <div class="row">
+        <label>快捷键</label>
+        <p class="tip">内置命令：<code>toggle-translate</code>（翻译/还原）、<code>translate-full</code>（整页翻译）、<code>toggle-bilingual</code>（双语/仅译文）、<code>toggle-mask</code>（遮罩学习全页开关，无默认键）、<code>translate-input-box</code>（翻译聚焦输入框，无默认键）。在 <code>chrome://extensions/shortcuts</code>（Edge：<code>edge://extensions/shortcuts</code>）查看与修改绑定。</p>
+      </div>
+
+      <div class="row">
+        <label>缓存</label>
+        <div class="inline">
+          <span class="lbl2">保留</span>
+          <input type="number" id="optCacheDays" min="0" step="1" class="narrow">
+          <span class="unit">天</span>
+          <span class="lbl2">上限</span>
+          <input type="number" id="optCacheEntries" min="1" step="100" class="narrow">
+          <span class="unit">条</span>
+          <button type="button" id="btnClearCache" class="ghost-btn">清除缓存</button>
+        </div>
+        <p id="cacheMsg" class="tip"></p>
+        <p class="tip">译文缓存在 chrome.storage.local，独立于设置；过期与超量在 SW 启动及每 100 次写入时惰性清理。</p>
+      </div>
+    </section>
+
+    <!-- ⑦ AI 与扩展场景 -->
+    <section id="sec-ai" class="card">
+      <h2>⑦ AI 与扩展场景</h2>
+      <p class="tip">本节功能依赖相应服务与内容脚本模块；AI 能力需要配置 AI 服务密钥（或本地 Ollama）后才会真正生效。</p>
+
+      <h3>AI 术语库与智能上下文</h3>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="aiEnableTerms"><span>启用术语一致性</span></label>
+        <p class="tip">翻译时附带术语表，确保同一术语全文译法一致。<b>仅对 AI 服务生效</b>（Claude / Gemini / DeepSeek / Ollama / OpenAI）；对谷歌、微软等免 key 服务无效。</p>
+      </div>
+      <div class="row">
+        <label for="aiTermsPreset">术语预设领域</label>
+        <select id="aiTermsPreset"><option value="">不使用</option></select>
+        <p class="tip">内置法律 / 医疗 / 电商 / 教育 / 游戏 / 小说 / 金融 / 科技等词库，由 background/terminology.js 提供；可与自定义术语叠加。</p>
+      </div>
+      <div class="row">
+        <label for="aiCustomTerms">自定义术语</label>
+        <textarea id="aiCustomTerms" rows="3" spellcheck="false" placeholder="每行一条，格式：原文写法 =&gt; 目标译法&#10;例如：API =&gt; 接口"></textarea>
+        <p class="tip">与预设词库合并；仅对 AI 服务生效。</p>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="aiEnableContext"><span>智能上下文</span></label>
+        <p class="tip">翻译时附带前后段落作为上下文，提升连贯度；会增加 token 消耗与请求体积，仅在 AI 服务下生效。</p>
+      </div>
+
+      <h3>译文布局</h3>
+      <div class="row">
+        <label for="layoutSelect">并排双语布局</label>
+        <select id="layoutSelect">
+          <option value="block">块级上下（默认）</option>
+          <option value="dual">并排双语（左右对照）</option>
+        </select>
+        <p class="tip">「并排双语」对<b>新翻译</b>的段落生效；已翻译的页面需先还原再重新翻译才会按新布局渲染。</p>
+      </div>
+
+      <h3>双语字幕</h3>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="subEnabled"><span>启用双语字幕</span></label>
+        <p class="tip">在 YouTube / 带 WebVTT 字幕的网页上叠加双语字幕；开启后<b>需刷新视频页</b>才会挂载，也可通过 popup「双语字幕开关」或悬浮球即时切换。</p>
+      </div>
+      <div class="row">
+        <div class="inline">
+          <label class="check"><input type="checkbox" id="subAutoBilingual"><span>自动双语</span></label>
+          <label class="check"><input type="checkbox" id="subShowBg"><span>显示字幕背景</span></label>
+        </div>
+        <div class="inline">
+          <span class="lbl2">字号</span>
+          <input type="number" id="subFontSize" min="8" max="96" step="1" class="narrow">
+          <span class="unit">px</span>
+          <span class="lbl2">目标语言</span>
+          <input type="text" id="subTargetLang" spellcheck="false" placeholder="留空跟随主目标语言">
+        </div>
+        <p class="tip">自动双语：原文与译文同屏显示；关闭则仅显示译文。字幕目标语言留空时跟随「① 基础」的目标语言。</p>
+      </div>
+
+      <h3>AI 词典卡</h3>
+      <div class="row">
+        <div class="inline">
+          <label class="check"><input type="checkbox" id="dictEnabled"><span>启用 AI 词典卡</span></label>
+          <label for="dictService">查询服务</label>
+          <select id="dictService"><option value="">默认链</option></select>
+        </div>
+        <div class="inline">
+          <label class="check"><input type="checkbox" id="dictExamples"><span>显示例句</span></label>
+          <label class="check"><input type="checkbox" id="dictAutoSpeak"><span>自动朗读</span></label>
+        </div>
+        <p class="tip">划词查询单词时由 AI 生成释义 / 音标 / 例句卡片；需配置 AI 服务密钥（或本地 Ollama）后生效。</p>
+      </div>
+
+      <h3>图片翻译</h3>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="imgEnabled"><span>启用图片翻译</span></label>
+        <p class="tip">对页面图片做 <b>OCR 识别后翻译</b>，依赖 OCR 服务；免费 OCR key 通常有调用频率限制。</p>
+      </div>
+      <div class="row">
+        <div class="inline">
+          <label for="imgTrigger">触发方式</label>
+          <select id="imgTrigger">
+            <option value="both">点击 + 悬停</option>
+            <option value="click">仅点击</option>
+            <option value="hover">仅悬停</option>
+          </select>
+          <label for="imgService">OCR 服务</label>
+          <select id="imgService"><option value="">自动（默认）</option></select>
+          <label for="imgTargetLang">目标语言</label>
+          <input type="text" id="imgTargetLang" spellcheck="false" placeholder="留空跟随主目标语言">
+        </div>
+      </div>
+
+      <h3>文档翻译</h3>
+      <div class="row">
+        <button type="button" id="btnDocPage" class="ghost-btn">打开文档翻译页</button>
+        <p class="tip">在独立页面翻译 PDF / EPUB / TXT / SRT / Markdown / HTML 文档（PDF 解析由内置 pdf.js 完成）。也可从 popup「更多」或悬浮球菜单进入。</p>
+      </div>
+    </section>
+
+    <!-- ⑧ 关于 -->
+    <section id="sec-about" class="card">
+      <h2>⑧ 关于</h2>
+      <p id="aboutVer" class="about-line"></p>
+      <h3>安装（Chrome ≥102）</h3>
+      <ol class="steps">
+        <li>打开 <code>chrome://extensions/</code>；</li>
+        <li>右上角打开「开发者模式」；</li>
+        <li>点击「加载已解压的扩展程序」；</li>
+        <li>选择目录 <code>D:\code\translate-anywhere</code>。</li>
+      </ol>
+      <h3>安装（Edge ≥102）</h3>
+      <ol class="steps">
+        <li>打开 <code>edge://extensions/</code>；</li>
+        <li>左侧打开「开发人员模式」；</li>
+        <li>点击「加载解压缩的扩展」；</li>
+        <li>选择同一目录（零改动）。</li>
+      </ol>
+      <h3>隐私声明</h3>
+      <p class="about-line">待翻译文本仅发送到你选择的翻译服务商（浏览器直连）；API key 等配置仅保存在本地 <code>chrome.storage.local</code>，不回传任何第三方；扩展不收集浏览历史与个人信息。</p>
+      <h3>免责声明</h3>
+      <p class="about-line">内置免费接口（谷歌 / DeepL 免费 / 微软 / 彩云 / 有道 / 讯飞）为非官方公开端点，可能随时失效或被风控，届时扩展自动沿降级链回退；如需稳定服务请自行申请官方 API 并配置密钥。本扩展仅供学习研究使用，使用风险自负。</p>
+    </section>
+
+    <!-- ⑨ 设置页翻译（用扩展自身翻译引擎翻译本页可见文字） -->
+    <section id="sec-page-translate" class="card">
+      <h2>⑨ 设置页翻译</h2>
+      <p class="tip">看不懂界面文字？可把本设置页的标签与说明文字直接译成下方所选语言，方便阅读；输入项与按钮文字保持不动，译文以淡色标注显示在原文之后，随时可一键还原。</p>
+      <p class="tip">翻译通过本扩展自身的翻译服务完成，需要至少有一个可用服务（谷歌 / 微软等免密钥服务默认可用，AI 服务需配置密钥）；某项失败时已完成的翻译会保留。</p>
+      <div class="row page-translate-row">
+        <label for="optPageTranslateLang">目标语言</label>
+        <select id="optPageTranslateLang"></select>
+        <button type="button" id="btnTranslatePage" class="ghost-btn">翻译本页</button>
+        <button type="button" id="btnRestorePage" class="ghost-btn" hidden>还原原文</button>
+        <span id="pageTranslateMsg" class="tip"></span>
+      </div>
+    </section>
+
+    <div class="save-bar">
+      <span id="saveMsg" class="save-msg"></span>
+      <button type="button" id="btnSave" class="save-btn">保存全部设置</button>
+    </div>
+  </main>
+</div>
+
+<div id="toast" hidden></div>
+
+<!-- shared/defaults.js 为协议规定的四处共用默认值；缺失时 options.js 内置兜底 -->
+<script src="../shared/defaults.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

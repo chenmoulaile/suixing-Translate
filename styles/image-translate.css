@@ -1,0 +1,132 @@
+/* styles/image-translate.css —— 图片翻译（OCR）浮层样式（image-translate.js 产物）
+   全部选择器 ta- 前缀，避免污染宿主页面。 */
+
+/* ==================== 悬停「译」按钮 ==================== */
+/* 贴在被悬停图片右上角（位置由 JS 以 fixed 计算）；z-index 仅低于结果卡 */
+.ta-img-hover-btn {
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #4f6ef2;
+  color: #fff;
+  font: 700 14px/28px system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  text-align: center;
+  cursor: pointer;
+  z-index: 2147482999;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: filter 0.12s ease;
+}
+
+.ta-img-hover-btn:hover {
+  filter: brightness(1.12);
+}
+
+/* ==================== 结果卡 ==================== */
+/* 默认固定右下角；有目标图片时 JS 用 inline left/top 覆盖 right/bottom 贴靠图片 */
+.ta-img-trans-card {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483000;
+  max-width: 380px;
+  max-width: min(380px, calc(100vw - 16px));
+  max-height: 60vh;
+  overflow: auto;
+  background: #1e1e22ee;
+  color: #fff;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 8px 30px #0006;
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.ta-img-trans-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.ta-img-trans-title {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* 关闭按钮 */
+.ta-img-trans-close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #cfd2d8;
+  font: 20px/22px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.ta-img-trans-close:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* 复制全部按钮 */
+.ta-img-trans-copy {
+  flex: none;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #e8e9ed;
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ta-img-trans-copy:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* 逐行对照：原文在上、译文在下 */
+.ta-img-trans-line {
+  margin-bottom: 10px;
+}
+
+.ta-img-trans-line:last-child {
+  margin-bottom: 0;
+}
+
+.ta-img-trans-src {
+  opacity: 0.75;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ta-img-trans-dst {
+  font-weight: 600;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ==================== 打印隐藏 ==================== */
+
+@media print {
+  .ta-img-hover-btn,
+  .ta-img-trans-card {
+    display: none !important;
+  }
+}

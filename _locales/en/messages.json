@@ -1,0 +1,8 @@
+{
+  "extName": { "message": "ParaTranslate" },
+  "extShortName": { "message": "ParaTranslate" },
+  "extDescription": { "message": "Bilingual page translation aggregating Google, Microsoft Edge, DeepL, Caiyun, Youdao, iFlytek and OpenAI services, with keyboard shortcuts, smart layout and automatic service fallback." },
+  "ctxTranslate": { "message": "Translate this page" },
+  "ctxRestore": { "message": "Show original" },
+  "ctxImageTranslate": { "message": "Translate image" }
+}

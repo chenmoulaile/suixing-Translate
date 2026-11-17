@@ -1,0 +1,8 @@
+{
+  "extName": { "message": "随行翻译" },
+  "extShortName": { "message": "随行翻译" },
+  "extDescription": { "message": "双语对照网页翻译：聚合谷歌/微软 Edge/DeepL/彩云/有道/讯飞/OpenAI 等翻译服务，支持快捷键、智能排版与多服务自动降级。" },
+  "ctxTranslate": { "message": "翻译网页" },
+  "ctxRestore": { "message": "显示原文" },
+  "ctxImageTranslate": { "message": "翻译图片" }
+}

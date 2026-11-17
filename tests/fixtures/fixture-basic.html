@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixture Basic English Article</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 760px; margin: 40px auto; padding: 0 24px; color: #222; }
+  h1 { font-size: 28px; } h2 { font-size: 22px; } h3 { font-size: 18px; }
+  p.indent { text-indent: 2em; }
+  .scattered { border: 1px dashed #bbb; padding: 8px; }
+  .flexrow { display: flex; gap: 12px; }
+  .flexrow > div { flex: 1; background: #f4f7fb; padding: 8px; }
+  .gridbox { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gridbox > p { background: #eef7ee; padding: 8px; margin: 0; }
+</style>
+</head>
+<body>
+<h1>The Quiet Revolution in Everyday Software</h1>
+
+<p>Welcome to this long-form article. For most of the last decade, software has been quietly reshaping the way ordinary people work, learn, and communicate. This page is used as a test fixture, but every paragraph below is a real, self-contained piece of English prose suitable for translation.</p>
+
+<p class="indent">The first wave of change arrived with <em>simple tools</em> that hid enormous complexity behind friendly buttons. A spreadsheet is a good example: beneath its plain surface lives a calculation engine once reserved for entire departments. When you drag a small square across a column of numbers, you are commanding machinery that would have required a room of clerks a century ago.</p>
+
+<h2>From Batch Processing to Instant Feedback</h2>
+
+<p>Early computers worked in batches. You handed over a deck of cards, waited overnight, and received a printout the next morning. <strong>Modern software inverted that rhythm entirely.</strong> Today a search box returns suggestions while you are still typing, and a map redraws itself as you pan across the city. The expectation of instant feedback has become so universal that any delay of more than a second feels like a failure of the product itself.</p>
+
+<p>Consider how this changed the craft of engineering. Programmers once optimized for machine time because machine time was scarce. Now they optimize for human attention, because attention is the scarce resource. This inversion explains why interfaces have become simpler even as the systems underneath them have become vastly more complicated.</p>
+
+<h3>Lists That Carry Their Own Structure</h3>
+
+<p>Structured notes are another quiet revolution. Consider the following outline, where a list item contains its own nested list:</p>
+
+<ul>
+  <li>Morning routine
+    <ul>
+      <li>Review the overnight reports before opening any chat window</li>
+      <li>Write down the three tasks that actually matter today</li>
+      <li>Check the calendar for meetings that could quietly be turned into messages</li>
+    </ul>
+  </li>
+  <li>Deep work block
+    <ul>
+      <li>Close every notification channel for ninety minutes</li>
+      <li>Keep a scratch file open for stray thoughts that must not interrupt the main task</li>
+    </ul>
+  </li>
+  <li>Evening review
+    <ul>
+      <li>Compare the plan with what actually happened</li>
+      <li>Move unfinished items to tomorrow without guilt</li>
+    </ul>
+  </li>
+</ul>
+
+<p>The outline above is deliberately nested. A translator that mishandles block boundaries tends to move the translation of the outer item to the very end of the list, detaching it from the line it belongs to. Good placement keeps the rendered translation directly under its own text and above the nested list.</p>
+
+<h2>Inline Links and Mixed Emphasis</h2>
+
+<p>Reading on the web is rarely a linear activity. You start with a paragraph, then follow <a href="#refs">a link to the references</a>, and return with new questions. Inline elements such as <em>emphasis</em>, <strong>strong importance</strong>, and <code>inline code</code> must survive translation with their typography intact, because they carry meaning that plain text cannot express.</p>
+
+<p>Writers use emphasis the way speakers use intonation. A sentence written plainly states a fact; <em>the same sentence with one italicized word</em> argues quietly with an unseen opponent. Preserving that voice across languages is one of the understated skills of good localization.</p>
+
+<div class="scattered">
+  Direct text before the first child block inside a container.
+  <p>The first child paragraph lives inside a container that also has loose, scattered text directly attached to it.</p>
+  Direct text between two child blocks, which the translator must keep attached to its own line.
+  <p>The second child paragraph follows more scattered text in the same container.</p>
+  Trailing direct text after the last child block completes the picture.
+</div>
+
+<h2>Layout Containers: Flex and Grid</h2>
+
+<p>Modern layout is built from flexible boxes and grids. A translation engine must not inject block nodes into a flex row, because that would disturb the layout. Instead it should place the translation beside the block as a sibling outside the flex container.</p>
+
+<div class="flexrow">
+  Container note: this leading text is a direct child of the flex container itself, so the container is a candidate block of its own.
+  <div>First flexible column: it holds a sentence about how cards share width equally on small screens and grow gracefully on large ones.</div>
+  <div>Second flexible column: it describes how a translation should never become an extra flex child, which would squeeze every other column.</div>
+  <div>Third flexible column: it mentions that sibling injection keeps the visual row untouched for readers of the original language.</div>
+</div>
+
+<p>The grid example below behaves similarly; each cell is a grid item, and translations must be injected outside the grid rather than as new grid children.</p>
+
+<div class="gridbox">
+  Grid container note: this leading text is a direct child of the grid container, making the container a candidate block as well.
+  <p>Grid cell one: the left cell of a two-column grid, containing a full sentence to be translated as its own unit.</p>
+  <p>Grid cell two: the right cell of the same grid, deliberately independent so each cell can be translated on its own line.</p>
+</div>
+
+<h2>Longer Paragraph for Width Matching</h2>
+
+<p>Typography gives us a simple way to verify correct bilingual placement: the rendered translation should span the same content width as the paragraph it belongs to, and it should sit immediately below the original text rather than at the end of a distant container. When a reader scans the page, original and translation form one visual unit, and the eye can move between them without hunting through the document. Anything that breaks that pairing — a translation appended to the end of a parent element, or one that inherits the wrong font weight, or an indent that leaks onto the translation line — turns a helpful bilingual page into a confusing collage. This paragraph is intentionally long so that a width mismatch would be obvious in a screenshot.</p>
+
+<h2 id="refs">References and Further Reading</h2>
+
+<p>Most of the ideas in this article are not new. They trace back to research on human-computer interaction from the nineteen-eighties, and to the design traditions of the printing trade long before that. What is new is the scale: billions of people now read on screens every day, which makes the quiet revolution worth studying carefully.</p>
+
+<p>Thank you for reading this fixture. If every paragraph above gained a translation directly beneath it, the typography engine is doing its job.</p>
+</body>
+</html>

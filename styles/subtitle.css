@@ -1,0 +1,54 @@
+/* styles/subtitle.css —— 实时双语字幕浮层（content/subtitle.js 产物）
+   浮层挂在 <video> 父节点内，全部选择器 ta-sub- 前缀，避免污染宿主页面。
+   字号由 JS 通过 CSS 变量 --ta-sub-fs 下发（settings.subtitle.fontSize）。 */
+
+.ta-sub-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  transform: translateX(-50%);
+  z-index: 2147483000;
+  max-width: 80%;
+  text-align: center;
+  pointer-events: none;
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  line-height: 1.35;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 原文行：略小、略淡 */
+.ta-sub-original {
+  font-size: calc(var(--ta-sub-fs, 18px) * 0.85);
+  opacity: .85;
+  color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 .5px #000;
+}
+
+/* 译文行：主字号、加粗 */
+.ta-sub-trans {
+  font-size: var(--ta-sub-fs, 18px);
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+  font-weight: 600;
+}
+
+/* 背景模式（settings.subtitle.showBackground） */
+.ta-sub-overlay.ta-sub-bg .ta-sub-original,
+.ta-sub-overlay.ta-sub-bg .ta-sub-trans {
+  background: rgba(0, 0, 0, .6);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* 空行不占位（即使背景模式也不显示空底框） */
+.ta-sub-overlay .ta-sub-original:empty,
+.ta-sub-overlay .ta-sub-trans:empty {
+  display: none !important;
+}
+
+/* 打印隐藏 */
+@media print {
+  .ta-sub-overlay { display: none !important; }
+}

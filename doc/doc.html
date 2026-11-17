@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>随行翻译 · 文档翻译</title>
+  <link rel="stylesheet" href="doc.css">
+</head>
+<body>
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="back" href="../popup/popup.html" title="返回" aria-label="返回">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <div class="brand">
+        <img src="../assets/icons/icon32.png" alt="">
+        <span class="brand-name">随行翻译</span>
+        <span class="sep">·</span>
+        <span class="brand-sub">文档翻译</span>
+      </div>
+      <div class="topbar-right">
+        <label class="lang-label" for="targetLang">目标语言</label>
+        <select id="targetLang" class="lang-select" aria-label="目标语言"></select>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- 介绍 -->
+    <section class="intro">
+      <h1>文档翻译</h1>
+      <p>拖入文档，自动解析为段落并逐段翻译，生成可导出的双语对照。全部在本地解析，仅翻译过程使用扩展的翻译服务。</p>
+    </section>
+
+    <!-- 拖拽上传区 -->
+    <section id="dropZone" class="dropzone" tabindex="0" role="button" aria-label="点击或拖拽文件到此处上传">
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="dz-title">拖拽文件到此处，或 <span class="dz-link">点击选择</span></div>
+      <div class="dz-sub">支持 TXT · Markdown · HTML · SRT / VTT 字幕 · EPUB · PDF</div>
+      <div class="dz-hint">单次单个文件 · 最大 40 MB</div>
+      <input id="fileInput" type="file" accept=".txt,.md,.markdown,.html,.htm,.srt,.vtt,.epub,.pdf,text/plain,text/markdown,text/html,application/epub+zip,application/pdf" hidden>
+    </section>
+
+    <!-- 进度区 -->
+    <section id="progressArea" class="progress-area" hidden>
+      <div class="progress-head">
+        <div class="progress-status">
+          <span id="progressPhase" class="phase">准备中…</span>
+          <span id="progressText" class="progress-text">0 / 0</span>
+        </div>
+        <button id="cancelBtn" type="button" class="btn btn-ghost">取消</button>
+      </div>
+      <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      <div id="progressNote" class="progress-note"></div>
+    </section>
+
+    <!-- 错误 / 提示 -->
+    <div id="notice" class="notice" hidden></div>
+
+    <!-- 结果区 -->
+    <section id="results" class="results" hidden>
+      <div class="results-head">
+        <div class="results-title">
+          <span id="resultName" class="result-name"></span>
+          <span id="resultMeta" class="result-meta"></span>
+        </div>
+        <div class="style-toggle" role="group" aria-label="显示样式">
+          <button type="button" class="seg active" data-style="bilingual">双语对照</button>
+          <button type="button" class="seg" data-style="translation">仅译文</button>
+          <button type="button" class="seg" data-style="original">仅原文</button>
+        </div>
+      </div>
+
+      <div class="export-bar">
+        <span class="export-label">导出：</span>
+        <button type="button" class="btn" data-export="md">双语 Markdown</button>
+        <button type="button" class="btn" data-export="txt">双语 TXT</button>
+        <button type="button" class="btn" data-export="html">双语 HTML</button>
+        <button type="button" class="btn" data-export="translated-txt">仅译文 TXT</button>
+        <button type="button" class="btn subtitle-only" data-export="srt" hidden>双语 SRT</button>
+        <button type="button" class="btn subtitle-only" data-export="translated-srt" hidden>仅译文 SRT</button>
+      </div>
+
+      <div id="cardList" class="card-list"></div>
+    </section>
+
+    <footer class="foot">随行翻译 · 文档翻译为离线解析，翻译由扩展服务在后台完成。</footer>
+  </main>
+
+  <!-- defaults 提供 TA.TARGET_LANGS / TA.mergeDefaults；guard：缺失仍可工作 -->
+  <script src="../shared/defaults.js"></script>
+  <script src="vendor/pdf.min.js"></script>
+  <script src="doc.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+﻿{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "short_name": "__MSG_extShortName__",
+  "description": "__MSG_extDescription__",
+  "version": "1.2.0",
+  "default_locale": "zh_CN",
+  "minimum_chrome_version": "102",
+  "icons": { "16": "assets/icons/icon16.png", "32": "assets/icons/icon32.png", "48": "assets/icons/icon48.png", "128": "assets/icons/icon128.png" },
+  "action": { "default_popup": "popup/popup.html", "default_title": "__MSG_extName__", "default_icon": { "16": "assets/icons/icon16.png", "32": "assets/icons/icon32.png", "48": "assets/icons/icon48.png", "128": "assets/icons/icon128.png" } },
+  "background": { "service_worker": "background/service-worker.js" },
+  "options_ui": { "page": "options/options.html", "open_in_tab": true },
+  "permissions": ["storage", "unlimitedStorage", "contextMenus", "activeTab", "scripting"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["styles/content.css", "styles/themes.css", "doc/doc.html", "styles/subtitle.css", "styles/dictionary.css", "styles/image-translate.css", "styles/dual-column.css", "styles/sidebar.css"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
+  "host_permissions": [
+    "https://oneshot-free.www.deepl.com/*", "https://api-free.deepl.com/*", "https://api.deepl.com/*", "https://api.deeplx.org/*",
+    "https://translate.googleapis.com/*", "https://dict.youdao.com/*", "https://www.iflyrec.com/*",
+    "https://api.interpreter.caiyunai.com/*", "https://edge.microsoft.com/*", "https://api-edge.cognitive.microsofttranslator.com/*", "https://api.openai.com/*",
+    "https://api.anthropic.com/*", "https://generativelanguage.googleapis.com/*", "https://api.deepseek.com/*", "http://localhost:11434/*", "https://api.ocr.space/*", "https://video.google.com/*", "https://www.youtube.com/*"
+  ],
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*"],
+    "js": [
+      "shared/defaults.js",
+      "content/core.js",
+      "content/rules.js",
+      "content/formula.js",
+      "content/walker.js",
+      "content/injector.js",
+      "content/interactions.js",
+      "content/ball.js",
+      "content/export.js",
+      "content/input-enhance.js",
+      "content/subtitle.js",
+      "content/dictionary.js",
+      "content/image-translate.js",
+      "content/main.js"
+    ],
+    "css": [
+      "styles/content.css",
+      "styles/themes.css",
+      "styles/ball.css",
+      "styles/interactions.css",
+      "styles/dual-column.css",
+      "styles/subtitle.css",
+      "styles/dictionary.css",
+      "styles/image-translate.css",
+      "styles/sidebar.css"
+    ],
+    "run_at": "document_idle", "all_frames": false
+  }],
+  "commands": {
+    "_execute_action": { "description": "Open ParaTranslate popup" },
+    "toggle-translate": { "suggested_key": { "default": "Alt+A", "mac": "Alt+A" }, "description": "Translate page / restore original" },
+    "translate-full":   { "suggested_key": { "default": "Alt+W", "mac": "Alt+W" }, "description": "Translate entire page (full mode)" },
+    "toggle-bilingual": { "suggested_key": { "default": "Alt+B", "mac": "Alt+B" }, "description": "Toggle bilingual / translation-only" },
+    "toggle-mask": { "description": "Toggle mask (blur) learning mode on translated text" },
+    "translate-input-box": { "description": "Translate the currently focused input box" },
+    "toggle-subtitle": { "description": "寮€鍚?鍏抽棴鍙岃瀛楀箷" }
+  }
+}
+

@@ -1,0 +1,21 @@
+# 测试运行环境（体积巨大，不入库）
+tests/chromium/
+tests/node_modules/
+tests/*.zip
+tests/chromium-win.zip
+
+# 调试/临时日志
+tests/*.log
+tests/debug-*.js
+tests/probe-*.js
+tests/_*.js
+
+# 系统/编辑器杂项
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# 注意：tests/ 下的测试脚本、fixtures、screenshots、package.json 保留入库

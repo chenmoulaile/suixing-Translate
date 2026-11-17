@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixture KaTeX Formulas</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+<style>
+  body { font-family: Georgia, serif; max-width: 720px; margin: 40px auto; color: #222; }
+  .formula-note { color: #555; }
+</style>
+</head>
+<body>
+<h1>KaTeX Formula Protection Fixture</h1>
+
+<p>This page contains inline and display formulas rendered by KaTeX. A translation extension must protect the rendered formula nodes from being torn apart by text segmentation. Each paragraph below mixes ordinary prose with a formula.</p>
+
+<p>The quadratic formula is given by \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\), which solves any equation of the form \(ax^2 + bx + c = 0\) for the variable \(x\). Notice how the formula sits inside a sentence that should be translated around it.</p>
+
+<p>Euler's identity states that \(e^{i\pi} + 1 = 0\), a relation so compact that mathematicians often describe it as the most beautiful equation in the field. It links five fundamental constants in a single line.</p>
+
+<p>The sum of the first \(n\) positive integers is \(\sum_{k=1}^{n} k = \frac{n(n+1)}{2}\), a result Gauss reportedly discovered as a schoolboy. The formula generalizes to arithmetic series of any common difference.</p>
+
+<div>
+$$
+\int_{0}^{\infty} e^{-x^2} \, dx = \frac{\sqrt{\pi}}{2}
+$$
+</div>
+
+<p>The display equation above evaluates the Gaussian integral. Below, Bayes' theorem connects conditional probabilities: \(P(A \mid B) = \frac{P(B \mid A)\,P(A)}{P(B)}\). It is the backbone of Bayesian statistics.</p>
+
+<p class="formula-note">After translation, every rendered <span class="expect-katex">span.katex</span> node should still be present with identical inner markup, and the translated text should appear near the paragraph that contained the formula.</p>
+</body>
+</html>

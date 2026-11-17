@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CF-like problem · MathJax v2</title>
+<!-- MathJax v2（Codeforces 2.7.9 同款形态：MathJax_Preview + span.MathJax + script[type=math/tex] 三连相邻节点；
+     HTMLorMML 输出容器的类名即 span.MathJax，与 content/formula.js FORMULA_SELECTORS 匹配） -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<style>
+  .header { border-bottom: 1px solid #ccc; padding: 4px 0; }
+  .ttypography { max-width: 800px; }
+  .sample-test { background: #f0f0f0; padding: 8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="time-limit">time limit per test 2 seconds</div>
+  <div class="memory-limit">memory limit per test 256 megabytes</div>
+</div>
+
+<div class="ttypography">
+  <p>You are given a sequence of integers \(a_1, a_2, \ldots, a_n\) and an integer \(k\). Your task is to find the longest contiguous subarray such that every element appears at most \(k\) times in it.</p>
+  <p>More formally, find the maximal segment \([l, r]\) such that for every value \(v\), the number of occurrences of \(v\) inside the segment does not exceed \(k\). The classic two-pointer technique solves this in linear time because $$\sum_{i=1}^{n} (r_i - l_i + 1) \le n$$ holds for every monotone scan of the array.</p>
+  <p>The proof of the upper bound uses the geometric series: if each step contributes at least half of the remaining length, the total work is bounded by $$\sum_{j=0}^{\infty} 2^{-j} = 2$$ which is constant per element.</p>
+  <ul>
+    <li>The first pointer advances while the constraint is satisfied and the current sum stays below \(s\).</li>
+    <li>The second pointer contracts the window whenever the constraint \(c_i \le m\) is violated.</li>
+  </ul>
+  <p>Output the length of the longest valid segment and its left endpoint; if several answers exist, print the leftmost one. Note that \(n \le 2 \cdot 10^{5}\) so an \(O(n \log n)\) solution is sufficient.</p>
+</div>
+
+<div class="sample-test">
+  <div class="input"><pre>3 1
+1 2 1</pre></div>
+  <div class="output"><pre>3</pre></div>
+</div>
+</body>
+</html>
