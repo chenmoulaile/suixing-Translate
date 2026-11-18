@@ -18,7 +18,7 @@
       "name": "6a. 真实翻译服务连通性（默认链 5 服务逐一直发，含 ⟪mN⟫ token 样本）",
       "passed": true,
       "evidence": [
-        "google: FAIL RATE_LIMITED:HTTP 429: https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=The+quick+brown+fox+jumps+over+the+lazy+dog.",
+        "google: FAIL NETWORK:网络请求失败: Failed to fetch",
         "edge: FAIL HTTP_ERROR:HTTP 404: https://edge.microsoft.com/translate/auth",
         "deepl-free: OK · 样例=\"鉴于对于所有 x，都有 ⟪m1⟫ + ⟪m2⟫ = ⟪m3⟫ 成立，因此通过与几何级数的情况进行比较，可知该级数收敛。\" · token保留=3/3",
         "caiyun: FAIL BAD_RESPONSE:彩云 jwt 接口返回无效数据",
@@ -136,7 +136,7 @@
       "passed": true,
       "evidence": [
         "正文长度: 36641 chars（>5000 ✓）",
-        "progress 采样: [{\"t\":876,\"done\":0,\"total\":61}]（61 段 ≤ 单批 200 段上限 → 单包一次回填，done/total 由 0/61 直接至完成，属分包设计行为）",
+        "progress 采样: [{\"t\":1223,\"done\":0,\"total\":61}]（61 段 ≤ 单批 200 段上限 → 单包一次回填，done/total 由 0/61 直接至完成，属分包设计行为）",
         "段落翻译完成: 60/60（含中文译文 60，错误态 0）",
         "静置 10s DOM 签名一致: true；期间新增 console error=0"
       ],
@@ -155,8 +155,8 @@
       "name": "15a. 缓存写入：翻译后 GET_CACHE_STATS 条目增长、SW 日志出现 done: cached=…",
       "passed": true,
       "evidence": [
-        "缓存条目: {\"entries\":113,\"oldestAt\":1794879939903}",
-        "SW 批次日志样例: [TA] mwk16qis-1 done: cached=0 ok=61/61 usedServices=[deepl-free]"
+        "缓存条目: {\"entries\":113,\"oldestAt\":1795000753537}",
+        "SW 批次日志样例: [TA] mwm14c8z-1 done: cached=0 ok=61/61 usedServices=[deepl-free]"
       ],
       "detail": null
     },
@@ -165,7 +165,7 @@
       "passed": true,
       "evidence": [
         "二次翻译用时: 1.3s（全部命中缓存时接近瞬时）",
-        "SW 最新批次日志: [TA] mwk182gh-1 done: cached=61 ok=61/61 usedServices=[]"
+        "SW 最新批次日志: [TA] mwm168du-1 done: cached=61 ok=61/61 usedServices=[]"
       ],
       "detail": null
     },
@@ -174,7 +174,7 @@
       "passed": true,
       "evidence": [
         "CLEAR_CACHE 后条目: {\"entries\":0,\"oldestAt\":null}",
-        "重翻后条目: {\"entries\":61,\"oldestAt\":1794880081046}"
+        "重翻后条目: {\"entries\":61,\"oldestAt\":1795000938110}"
       ],
       "detail": null
     },
@@ -235,7 +235,7 @@
       "ok": false,
       "sample": null,
       "tokKept": 0,
-      "err": "RATE_LIMITED:HTTP 429: https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=The+quick+brown+fox+jumps+over+the+lazy+dog."
+      "err": "NETWORK:网络请求失败: Failed to fetch"
     },
     "edge": {
       "ok": false,

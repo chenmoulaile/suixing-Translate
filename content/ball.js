@@ -37,6 +37,11 @@
   var POS_KEY = 'ta-ball-pos';       // 拖动位置记忆
   var TIP_KEY = 'ta-ball-tip-n';     // tooltip 引导计数
   var DRAG_PX = 6;                   // 位移超过该值判定为拖动而非点击
+  var EDGE_SNAP_PX = 28;             // 拖放后靠近视口左右边缘的吸附阈值（小范围，非磁吸区）
+  // 翻译请求健壮性：连接错误重试退避（唤醒被回收的 MV3 service worker）+ 单次超时
+  var RETRY_BACKOFF_MS = [150, 350]; // 第 1/2 次重试前的等待
+  var REQ_TIMEOUT_MS = 45000;        // 单次 sendMessage 超时：保证 Promise 必定 settle
+  var CONN_ERR_RE = /Could not establish connection|Receiving end does not exist|message port closed/i;
   // 主题 24 档与中文名 fallback（A 在 shared/defaults.js 交付 TA.THEMES/TA.THEME_NAMES 后自动切换）
   var THEMES_FALLBACK = ['none', 'grey', 'dashed', 'thinDashed', 'dotted', 'underline',
     'nativeUnderline', 'nativeDashed', 'nativeDotted', 'wavy', 'dashedBorder', 'solidBorder',
@@ -73,6 +78,7 @@
   var sideOpen = false;
   var sideHistory = [];       // 最近 5 条 {src, dst, original, translated}（内存）
   var sideDirectSeq = 0;      // 降级直发批次号
+  var sideTranslating = false; // 划译台翻译进行中：防止连点堆叠，任何出口都会复位
 
   /* ==================== 设置读取兜底 ==================== */
 
@@ -100,7 +106,14 @@
 
   /* ==================== 挂载判定 ==================== */
 
+  // 悬浮球只存在于顶层 frame：all_frames:true 时子 frame 也会注入本脚本，
+  // 但不能各自建球/建菜单/建观察器。window.top 跨源访问会抛错，故 try/catch 兜底。
+  function isTopFrame() {
+    try { return window.self === window.top; } catch (e) { return false; }
+  }
+
   function allowed() {
+    if (!isTopFrame()) return false; // 子 frame 不渲染悬浮球（翻译仍由各 frame 主流程执行）
     var cfg = uiCfg(settings);
     if (!cfg.show) return false;
     for (var i = 0; i < cfg.blocked.length; i++) {
@@ -338,6 +351,7 @@
   // 遮罩学习模式全页开关：优先走 A 的 injector.toggleMaskTheme（与快捷键 toggle-mask
   // 同一路径，documentElement[data-ta-root-theme="mask"] ↔ 移除），不可用时本地切属性兜底
   function actToggleMask() {
+    if (!isTopFrame()) return; // 子 frame 无球/无菜单，忽略该动作
     if (TA.injector && typeof TA.injector.toggleMaskTheme === 'function') {
       try { maskOn = !!TA.injector.toggleMaskTheme(); }
       catch (e) { maskOn = !maskOn; applyMaskAttr(); }
@@ -472,7 +486,8 @@
       drag = null;
       el.classList.remove('ta-dragging');
       if (wasDrag) {
-        savePos();        // 拖拽只移动位置，不翻译
+        // 拖拽只移动位置，不翻译；靠近边缘时先吸附，再按结果决定是否记忆自由坐标
+        if (!snapToEdge(el)) savePos();
         clearTimeout(hoverTimer);
       } else {
         closeMenu();      // 点击不再开菜单（菜单由 hover 展开）
@@ -529,6 +544,27 @@
   }
 
   function clampNum(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+  // 拖放后若球靠近视口左/右边缘（≤EDGE_SNAP_PX），清除内联坐标并切到对应停靠侧，
+  // 让 CSS 的 left/right:10px 接管吸附。吸附态无自由坐标 → 走 clearPos() 清除位置记忆
+  // （与「切换停靠侧设置」时的持久化方式一致，刷新后回落到 CSS 默认停靠位）。
+  // 保留 wasDrag 判定：仅真实拖动后调用，不影响 hover 展开菜单，也不触发翻译。
+  function snapToEdge(el) {
+    try {
+      var rect = el.getBoundingClientRect();
+      var left = rect.left;
+      var size = rect.width || el.offsetWidth || 36;
+      var vw = document.documentElement.clientWidth;
+      var side = null;
+      if (left < EDGE_SNAP_PX) side = 'left';
+      else if (left + size > vw - EDGE_SNAP_PX) side = 'right';
+      if (!side) return false;                 // 中间区域：保留自由位置
+      el.setAttribute('data-ta-ball-side', side);
+      clearPos();                              // 清内联 left/top/right/marginTop + 位置记忆
+      if (sideOpen) positionSidebar();          // 侧边栏若开着，跟随新的停靠侧
+      return true;
+    } catch (e) { return false; }
+  }
 
   function savePos() {
     try {
@@ -826,6 +862,7 @@
   }
 
   function openSidebar() {
+    if (!isTopFrame()) return; // 划译台浮层只在顶层 frame 唤起
     try {
       if (!sideEls) buildSidebar();
       if (!sideEls) return;
@@ -951,14 +988,62 @@
     });
   }
 
-  // 优先复用 TA.pipeline.translateText（main.js 交付），未就绪时直发 TRANSLATE_BATCH
-  function translateViaPipeline(text, target) {
-    if (TA.pipeline && typeof TA.pipeline.translateText === 'function') {
-      try {
-        var p = TA.pipeline.translateText(text, { targetLang: target });
-        if (p && typeof p.then === 'function') return p;
-      } catch (e) { console.debug('[TA][ball]', 'pipeline 异常，走降级直发', e); }
+  // 健壮发送：对连接类错误（SW 被回收 / 端口关闭）重试 2 次（150ms、350ms 退避唤醒 SW），
+  // 并用 Promise.race 式单次超时保证 Promise 必定 settle（不会让「翻译中…」永久卡住）。
+  function isConnError(e) {
+    return CONN_ERR_RE.test((e && e.message) || String(e || ''));
+  }
+  function requestWithRetry(payload, opts) {
+    opts = opts || {};
+    var maxAttempts = (typeof opts.retries === 'number' ? opts.retries : 2) + 1; // 首轮 + 2 次重试
+    var timeoutMs = opts.timeout || REQ_TIMEOUT_MS;
+
+    // 单次 sendMessage：回调里读 lastError 清提示；超时/抛错都归一化成 TA-like 错误对象
+    function sendOnce() {
+      return new Promise(function (resolve, reject) {
+        var settled = false;
+        var timer = setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          reject({ code: 'TIMEOUT', message: '翻译请求超时，请重试' });
+        }, timeoutMs);
+        function cb(res) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          var lastErr = chrome.runtime.lastError; // 读取以清除运行时的 "Unchecked lastError" 提示
+          if (lastErr) { reject(lastErr); return; }
+          resolve(res);
+        }
+        try { chrome.runtime.sendMessage(payload, cb); }
+        catch (e) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(e);
+        }
+      });
     }
+
+    function attempt(n) {
+      return sendOnce().catch(function (e) {
+        if (n < maxAttempts && isConnError(e)) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, RETRY_BACKOFF_MS[n - 1] || 350);
+          }).then(function () { return attempt(n + 1); });
+        }
+        // 非连接错误 / 重试耗尽 / 超时：统一抛出 TA-like 错误，交由 doTranslate 展示
+        if (e && e.code) throw e;
+        throw { code: 'NETWORK', message: '无法连接后台服务：' + ((e && e.message) || String(e)) };
+      });
+    }
+    return attempt(1);
+  }
+
+  // 划译台独立翻译通道：不经过 TA.pipeline.translateText——其内部 sendMessage 无法在
+  // ball.js 内重试，且尊重页面 runSeq（页面状态变化会 reject CANCELLED）。这里直发
+  // 同一条 TRANSLATE_BATCH 消息，但走 requestWithRetry（重试 + 超时），更加健壮。
+  function translateViaPipeline(text, target) {
     return translateDirect(text, target);
   }
 
@@ -967,7 +1052,7 @@
     var id = (TA.util && typeof TA.util.genId === 'function')
       ? TA.util.genId()
       : ('side-' + Date.now() + '-' + sideDirectSeq);
-    return chrome.runtime.sendMessage({
+    return requestWithRetry({
       type: 'TRANSLATE_BATCH',
       requestId: id,
       batchId: Date.now().toString(36) + '-side' + sideDirectSeq,
@@ -985,34 +1070,43 @@
   }
 
   function doTranslate() {
-    if (!sideEls) return;
+    if (!sideEls || sideTranslating) return; // 连点防护：一次翻译未结束前忽略后续点击
+    var text = sideEls.input.value.trim();
+    if (!text) {
+      showTip('请输入要翻译的文字', 1800);
+      sideEls.input.focus();
+      return;
+    }
+    var finished = false;
+    // 任何出口（成功 / 失败 / 超时 / 异常）都复位保护锁与按钮，保证失败后可立即重试
+    function finish() {
+      if (finished) return;
+      finished = true;
+      sideTranslating = false;
+      setSideLoading(false);
+    }
+    sideTranslating = true;
     try {
-      var text = sideEls.input.value.trim();
-      if (!text) {
-        showTip('请输入要翻译的文字', 1800);
-        sideEls.input.focus();
-        return;
-      }
+      setSideLoading(true);
       var target = sideEls.dst.value || 'zh-CN';
       var source = sideEls.src.value || 'auto';
       var chunks = splitChunks(text);
-      setSideLoading(true);
       mapLimit(chunks, 3, function (chunk) { return translateViaPipeline(chunk, target); })
         .then(function (outs) {
           var translated = outs.join('\n\n'); // 保留段间空行
           renderSideResult(text, translated, source, target);
           pushHistory(source, target, text, translated);
-          setSideLoading(false);
         })
         .catch(function (e) {
           var msg = (e && e.message) ||
             (typeof TA.errorText === 'function' ? TA.errorText(e || {}) : '翻译失败');
           renderSideError(msg, e && e.code);
-          setSideLoading(false);
-        });
+        })
+        .then(finish, finish); // then/catch 之后的兜底收尾：即便 render 抛错也恢复 UI
     } catch (e) {
       console.debug('[TA][ball]', 'doTranslate 失败', e);
-      setSideLoading(false);
+      renderSideError((e && e.message) || '翻译失败，请重试', e && e.code);
+      finish();
     }
   }
 
@@ -1020,9 +1114,9 @@
     if (!sideEls) return;
     var box = sideEls.result;
     box.textContent = '';
-    var orig = document.createElement('div');
-    orig.className = 'ta-side-res-orig';
-    orig.textContent = original;
+    // 用户自己粘贴了原文，输入框里已可见：结果区只展示译文，不回显原文
+    // （保留 original 形参以兼容历史回填调用，但不再渲染 .ta-side-res-orig）
+    void original;
     var trans = document.createElement('div');
     trans.className = 'ta-side-res-trans';
     trans.textContent = translated;
@@ -1039,7 +1133,6 @@
     copy.addEventListener('click', function () { copyText(translated, copy); });
     foot.appendChild(lang);
     foot.appendChild(copy);
-    box.appendChild(orig);
     box.appendChild(trans);
     box.appendChild(foot);
   }

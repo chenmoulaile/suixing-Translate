@@ -47,6 +47,18 @@
         '.header .input-file', '.header .output-file'
       ],
       theme: ''
+    },
+    // VJudge 题面：题面正文嵌在同源 iframe（#frame-description-container iframe）内。
+    // all_frames:true 下该 iframe 自己的 document 会被独立注入并收集 .ttypography
+    // 等正文；本规则作为顶层 frame 的尽力辅助——命中容器整体成段，缺失容器时
+    // querySelectorAll 自然返回空（walker 强制根模式不加选择即无单元）。
+    {
+      pattern: 'vjudge.net',
+      selectors: ['#frame-description-container', '#contest_problem', 'main .card:has(#frame-description-container)'],
+      excludeSelectors: [
+        '#frame-description-container iframe', 'iframe', 'nav', 'header', 'footer',
+        '.navbar', '#prob-right-panel', 'script', 'style'
+      ]
     }
   ];
 

@@ -161,6 +161,7 @@
   const btnImageTrans = $('btnImageTrans');
   const btnLayout = $('btnLayout');
   const btnSidebar = $('btnSidebar');
+  const neverBtn = $('neverBtn');
 
   /* ================= 运行状态 ================= */
 
@@ -212,6 +213,57 @@
     }
     for (const u of BLOCKED_URLS) {
       if (lower.startsWith(u)) return true;
+    }
+    return false;
+  }
+
+  /* ================= 永不翻译此站点：排除项匹配与判定 ================= */
+
+  // 与 content/rules.js 的 escapeRegExp 同语义（本地兜底用）。
+  function neverEscapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // 与 content/rules.js matchUrlPattern 同语义的模式匹配。
+  // 优先复用 rules.js 暴露的公共接口（popup.html 已在 popup.js 之前加载它）；
+  // 未加载时回落到本地移植，保证"取消永不翻译"判定不依赖 rules.js 是否就绪。
+  function neverMatch(pattern, url) {
+    const rules = globalThis.TA && globalThis.TA.rules;
+    if (rules && typeof rules.matchUrlPattern === 'function') {
+      try { return !!rules.matchUrlPattern(pattern, url); } catch (e) { /* 回落本地实现 */ }
+    }
+    if (!pattern) return false;
+    const p = String(pattern).trim();
+    if (!p) return false;
+    let u;
+    try { u = new URL(url); } catch (e) { return false; }
+    const hasStar = p.indexOf('*') !== -1;
+    const isUrlLike = p.indexOf('://') !== -1 || p.indexOf('/') !== -1;
+    if (!hasStar && !isUrlLike) {
+      // 纯域名：只比 hostname
+      return u.hostname.toLowerCase() === p.toLowerCase().replace(/^\./, '');
+    }
+    if (!hasStar) {
+      // 完整 URL：全等（忽略 hash）
+      return url === p || url.split('#')[0] === p;
+    }
+    let re;
+    try {
+      re = new RegExp('^' + p.split('*').map(neverEscapeRegExp).join('.*') + '$', 'i');
+    } catch (e) { return false; }
+    if (isUrlLike) return re.test(url) || re.test(u.origin + u.pathname);
+    // 纯域名通配（*.example.com 等）：只对 hostname
+    return re.test(u.hostname.toLowerCase());
+  }
+
+  // 当前标签页是否已被"永不翻译"：仅看 excludedUrls，不掺 includedUrls
+  // （TA.rules.isBlocked 会同时考虑 includedUrls，故不直接用它做此判定）。
+  function siteExcluded(url) {
+    if (!url) return false;
+    const up = (settings && settings.urlPattern) || {};
+    const list = Array.isArray(up.excludedUrls) ? up.excludedUrls : [];
+    for (const p of list) {
+      if (neverMatch(p, url)) return true;
     }
     return false;
   }
@@ -434,6 +486,12 @@
       btnLayout.textContent = '并排双语：' + (dual ? '开' : '关');
       btnLayout.classList.toggle('on', dual);
     }
+    // "永不翻译此站点"是 toggle：已排除时显示"取消"并去掉危险色。
+    if (neverBtn) {
+      const isExc = siteExcluded(tabUrl);
+      neverBtn.textContent = isExc ? '取消永不翻译此站点' : '永不翻译此站点';
+      neverBtn.classList.toggle('danger', !isExc);
+    }
   }
 
   /* ================= 事件接线 ================= */
@@ -613,20 +671,30 @@
     poll();
   });
 
-  // 永不翻译此站点：把 "*://<hostname>/*" 追加进 urlPattern.excludedUrls
-  $('neverBtn').addEventListener('click', async function () {
+  // 永不翻译此站点（toggle）：已排除 → 移除所有命中当前站点的排除项；否则追加 "*://<hostname>/*"。
+  if (neverBtn) neverBtn.addEventListener('click', async function () {
     if (!tabUrl) { toast('无法获取当前网址'); return; }
     let host;
     try { host = new URL(tabUrl).hostname; } catch (e) { toast('无法解析当前网址'); return; }
     if (!host) { toast('无法解析当前网址'); return; }
     const pattern = '*://' + host + '/*';
     const cur = await loadSettings();
-    const list = (cur.urlPattern && cur.urlPattern.excludedUrls) || [];
-    if (list.indexOf(pattern) === -1) list.push(pattern);
-    cur.urlPattern = Object.assign({}, cur.urlPattern, { excludedUrls: list });
+    const up = Object.assign({}, cur.urlPattern);
+    const list = Array.isArray(up.excludedUrls) ? up.excludedUrls.slice() : [];
+    // 判定基于刚读取的最新设置（而非模块缓存），避免多弹窗实例间状态不同步。
+    const isExc = list.some(function (p) { return neverMatch(p, tabUrl); });
+    if (isExc) {
+      // 移除所有等价写法（如纯域名、带端口/路径的模式），而不仅是刚追加的那条。
+      up.excludedUrls = list.filter(function (p) { return !neverMatch(p, tabUrl); });
+    } else {
+      if (list.indexOf(pattern) === -1) list.push(pattern);
+      up.excludedUrls = list;
+    }
+    cur.urlPattern = up;
     await chrome.storage.local.set({ settings: cur });
     settings = cur;
-    toast('已加入永不翻译：' + host);
+    syncFeatureButtons(); // 立即刷新按钮文案/样式（无需等 onChanged 回环）
+    toast((isExc ? '已取消永不翻译：' : '已加入永不翻译：') + host);
   });
 
   // 设置在别处（options/其他弹窗实例）被修改 → 同步控件
@@ -657,6 +725,9 @@
         tabUrl = tabs[0].url || '';
       }
     } catch (e) { /* 查不到标签页按禁翻页处理 */ }
+
+    // tabUrl 就绪后再同步一次，使"永不翻译此站点"按钮文案反映当前站点状态
+    syncFeatureButtons();
 
     // 禁翻页快速路径：浏览器内置页 / 商店页直接显示兜底，不发消息
     if (tabId == null || isBlockedUrl(tabUrl)) {

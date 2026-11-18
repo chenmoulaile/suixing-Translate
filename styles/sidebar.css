@@ -112,6 +112,8 @@
   outline: none;
   cursor: pointer;
 }
+.ta-side-panel { color-scheme: light; }
+.ta-side-select option { background: #ffffff; color: #1f2430; }
 .ta-side-select:focus { border-color: #5b7cfa; box-shadow: 0 0 0 3px rgba(91, 124, 250, 0.16); }
 .ta-side-swap {
   flex: none;
@@ -135,10 +137,10 @@
 .ta-side-input {
   width: 100%;
   box-sizing: border-box;
-  min-height: 96px;
-  max-height: 320px;
+  min-height: 44px;
+  max-height: 120px;
   resize: none;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid rgba(60, 70, 110, 0.16);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
@@ -225,13 +227,29 @@
   flex: 1;
   min-height: 0;
   margin-top: 12px;
-  padding: 14px;
+  padding: 16px;
   box-sizing: border-box;
   border: 1px solid rgba(60, 70, 110, 0.1);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.55);
   overflow: auto;
 }
+/* 细圆角半透明滚动条（仅作用于侧边栏，避免污染宿主页面） */
+.ta-side-result,
+.ta-side-panel,
+.ta-side-input { scrollbar-width: thin; scrollbar-color: rgba(127,127,127,.45) transparent; }
+.ta-side-result::-webkit-scrollbar,
+.ta-side-panel::-webkit-scrollbar,
+.ta-side-input::-webkit-scrollbar { width: 8px; height: 8px; }
+.ta-side-result::-webkit-scrollbar-track,
+.ta-side-panel::-webkit-scrollbar-track,
+.ta-side-input::-webkit-scrollbar-track { background: transparent; }
+.ta-side-result::-webkit-scrollbar-thumb,
+.ta-side-panel::-webkit-scrollbar-thumb,
+.ta-side-input::-webkit-scrollbar-thumb { background: rgba(127,127,127,.40); border-radius: 4px; }
+.ta-side-result::-webkit-scrollbar-thumb:hover,
+.ta-side-panel::-webkit-scrollbar-thumb:hover,
+.ta-side-input::-webkit-scrollbar-thumb:hover { background: rgba(127,127,127,.62); }
 .ta-side-hint { color: #aab1c2; font-size: 12px; text-align: center; padding: 24px 8px; }
 .ta-side-res-orig {
   color: #8b93a7;
@@ -243,8 +261,9 @@
   border-bottom: 1px dashed rgba(60, 70, 110, 0.14);
 }
 .ta-side-res-trans {
-  color: #1f263a;
-  font-size: 15px;
+  color: #141a2e;
+  font-size: 17px;
+  line-height: 1.7;
   font-weight: 600;
   white-space: pre-wrap;
   word-break: break-word;
@@ -305,6 +324,12 @@
   .ta-side-history-chip { color: #aab3c7; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); }
   .ta-side-select,
   .ta-side-input { background: rgba(255, 255, 255, 0.06); color: #e6e9f0; border-color: rgba(255, 255, 255, 0.14); }
+  .ta-side-panel { color-scheme: dark; }
+  .ta-side-select option { background: #1e1e22; color: #e8eaed; }
+  .ta-side-result, .ta-side-panel, .ta-side-input { scrollbar-color: rgba(230,233,240,.28) transparent; }
+  .ta-side-result::-webkit-scrollbar-thumb,
+  .ta-side-panel::-webkit-scrollbar-thumb,
+  .ta-side-input::-webkit-scrollbar-thumb { background: rgba(230,233,240,.24); }
   .ta-side-select:focus,
   .ta-side-input:focus { border-color: #7089ff; box-shadow: 0 0 0 3px rgba(112, 137, 255, 0.18); }
   .ta-side-input::placeholder { color: #6f788c; }

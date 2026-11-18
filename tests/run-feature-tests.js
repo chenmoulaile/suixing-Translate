@@ -291,6 +291,37 @@ async function main() {
         ['EXCEPTION=' + String((e && e.message) || e)]);
     }
 
+    /* 12. iframe 题面翻译（vjudge 场景）：all_frames=true + 顶帧仅一个球 + iframe 内段落被翻译 */
+    try {
+      const fpage = await browser.newPage();
+      await fpage.goto(BASE + '/fixture-iframe.html?iv=' + Date.now(), { waitUntil: 'load', timeout: 30000 });
+      await sleep(1200);
+      const ballCount = await fpage.evaluate(() => document.querySelectorAll('#ta-float-ball').length);
+      await tabMsg(fpage, { type: 'TRANSLATE_PAGE' });
+      let innerHan = [];
+      for (let i = 0; i < 40; i++) {
+        await sleep(500);
+        const s = await fpage.evaluate(() => {
+          const ifr = document.querySelector('iframe');
+          try {
+            const d = ifr.contentDocument;
+            return [...d.querySelectorAll('p[data-ta="done"]')].map(p => {
+              const w = p.querySelector('.ta-target-inner'); return w ? w.textContent.slice(0, 40) : '';
+            });
+          } catch (e) { return []; }
+        });
+        if (s.some(x => /[\u4e00-\u9fff]/.test(x))) { innerHan = s; break; }
+        if (i === 39) innerHan = s;
+      }
+      record('12. iframe 题面可翻译（vjudge 场景）：顶帧仅 1 球 + iframe 内出现中文译文',
+        ballCount === 1 && innerHan.some(x => /[\u4e00-\u9fff]/.test(x)),
+        ['顶帧悬浮球数=' + ballCount, 'iframe 内译文=' + JSON.stringify(innerHan)]);
+      await fpage.close();
+    } catch (e) {
+      record('12. iframe 题面可翻译（vjudge 场景）：顶帧仅 1 球 + iframe 内出现中文译文', false,
+        ['EXCEPTION=' + String((e && e.message) || e)]);
+    }
+
     await page.close();
     const passed = results.filter((r) => r.passed).length;
     const failed = results.length - passed;

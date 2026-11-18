@@ -63,7 +63,10 @@
     if (!isFinite(ms) || ms <= 0) ms = 800;
     return {
       enabled: !!h.enabled,
-      trigger: HOVER_TRIGGERS.indexOf(h.trigger) !== -1 ? h.trigger : 'holdKey',
+      // 不存在"纯悬停"触发：即便设置里残留 trigger:'hover'，也强制回落到 holdKey，
+      // 保证任何翻译都必须有修饰键物理按住，杜绝无修饰键的随机悬停翻译。
+      trigger: h.trigger === 'hover' ? 'holdKey'
+        : (HOVER_TRIGGERS.indexOf(h.trigger) !== -1 ? h.trigger : 'holdKey'),
       holdKey: HOLD_KEYS[h.holdKey] ? h.holdKey : 'ctrl',
       pressHoldMs: Math.min(Math.max(ms, 200), 3000)
     };
@@ -330,7 +333,7 @@
   function onMouseOver(e) {
     var cfg = cfgHover(currentSettings);
     if (!cfg.enabled || cfg.trigger !== 'holdKey') return;
-    if (!hover.holdDown && !modifierOn(e, cfg.holdKey)) return;
+    if (!modifierOn(e, cfg.holdKey)) return;   // 修饰键必须在 mouse 事件上物理按住
     if (selectionActive()) return;   // 拖选过程中不触发
     var hit = null;
     try { hit = resolveHoverTarget(e.target, currentSettings, e.clientX, e.clientY); } catch (e2) { hit = null; }
@@ -429,9 +432,10 @@
   }
 
   function onWindowKeyup(e) {
+    // 任何 keyup 都清除按住态：Ctrl+C 等组合键漏掉匹配的 keyup 也不残留 latch。
+    hover.holdDown = false;
     var cfg = cfgHover(currentSettings);
     if (String(e.key || '').toLowerCase() === holdKeyName(cfg)) {
-      hover.holdDown = false;
       clearAllCandidates();
     }
   }

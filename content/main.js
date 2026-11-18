@@ -23,6 +23,14 @@
   if (TA.__mainLoaded) return; // 兜底注入防双跑
   TA.__mainLoaded = true;
 
+  // all_frames:true 时每个 frame 都跑本脚本。控制类消息（TRANSLATE_PAGE 等）广播到
+  // 所有 frame，各 frame 翻译自己的 DOM；但查询类消息（GET_PAGE_STATE/GET_FEATURES）
+  // 只由顶层 frame 应答，避免 popup 收到多份子 frame 的歧义状态。
+  // window.top 跨源访问会抛错，故 try/catch 兜底。
+  function isTopFrame() {
+    try { return window.self === window.top; } catch (e) { return false; }
+  }
+
   /* ==================== 状态 ==================== */
 
   var state = {
@@ -536,9 +544,12 @@
       : (typeof msg.name === 'string' ? 'CMD' : '');
     switch (type) {
       case 'GET_PAGE_STATE':
+        // 查询类消息：子 frame 不应成为歧义应答者（popup 轮询只认顶层状态）
+        if (!isTopFrame()) { sendResponse({ ok: false, __subframe: true }); return undefined; }
         sendResponse(buildPageState());
         return undefined;
       case 'GET_FEATURES':
+        if (!isTopFrame()) { sendResponse({ ok: false, __subframe: true }); return undefined; }
         sendResponse(buildFeaturesState());
         return undefined;
       case 'TRANSLATE_PAGE':

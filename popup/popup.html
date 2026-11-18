@@ -94,6 +94,8 @@
 
   <!-- shared/defaults.js 为协议规定的四处共用默认值；缺失时 popup.js 内置兜底 -->
   <script src="../shared/defaults.js"></script>
+  <!-- rules.js 为纯 IIFE：暴露 TA.rules.matchUrlPattern 供"永不翻译此站点"做排除项判定 -->
+  <script src="../content/rules.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
