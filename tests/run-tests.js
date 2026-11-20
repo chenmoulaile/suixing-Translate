@@ -482,6 +482,61 @@ async function main() {
       !katexReady ? 'KaTeX CDN 渲染失败（span.katex=0）' : (!identical ? '.katex innerHTML 在翻译后发生变化' : null));
     await katexPage.close();
 
+    /* ---------- 必测项 3c：AtCoder 内联公式（var/sup/sub）混合策略 ---------- */
+    const atcoderPage = await newPage(browser);
+    await atcoderPage.goto(BASE + '/fixture-atcoder.html?t=atcoder', { waitUntil: 'load', timeout: 30000 });
+    // 测试钩子：fixture 域名非 atcoder.jp，触发翻译前放行 protectInlineMath 与纯公式单元跳过
+    await atcoderPage.evaluate(() => { window.__TA_ATCODER_MATH_TEST__ = true; });
+    const t3c = await translatePage(atcoderPage, null, { timeout: 180000 });
+    let at = null;
+    for (let i = 0; i < 60; i++) {
+      at = await atcoderPage.evaluate(() => {
+        const hasHan = (s) => /[\u4e00-\u9fff]/.test(String(s || ''));
+        const inners = Array.from(document.querySelectorAll('p[data-ta="done"] > .ta-target-wrapper > .ta-target-inner'));
+        const innerText = inners.map((x) => x.textContent || '').join(' ');
+        // 纯公式约束行：应保留原文（无 wrapper、无 data-ta），且公式节点已回归
+        const pure = Array.from(document.querySelectorAll('li'))
+          .filter((x) => /3000/.test(x.textContent || ''))
+          .map((li) => ({
+            wrapper: !!li.querySelector('.ta-target-wrapper'),
+            dataTa: li.hasAttribute('data-ta'),
+            varCount: li.querySelectorAll('var').length,
+            text: (li.textContent || '').trim()
+          }));
+        return {
+          done: inners.length,
+          varCount: inners.reduce((n, x) => n + x.querySelectorAll('var').length, 0),
+          supSubCount: inners.reduce((n, x) => n + x.querySelectorAll('sup,sub').length, 0),
+          han: hasHan(innerText),
+          leak: /⟪\s*m\s*\d+\s*⟫/.test(document.body.innerText || ''),
+          pure: pure,
+          sample: innerText.slice(0, 140)
+        };
+      });
+      if (at.varCount > 0 && at.han) break;
+      await sleep(500);
+    }
+    await shot(atcoderPage, '04b-atcoder-inline-math.png', { fullPage: true });
+    const pureOk = !!(at && at.pure.length) && at.pure.every((x) =>
+      !x.wrapper && !x.dataTa && x.varCount > 0 && /3000/.test(x.text) && !/⟪/.test(x.text));
+    let fail3c = null;
+    if (!at) fail3c = '未取到译文 DOM 快照';
+    else if (at.varCount === 0) fail3c = '译文 wrapper 内无 <var>：内联公式未回填到译文';
+    else if (!at.han) fail3c = '译文无中文';
+    else if (at.leak) fail3c = '可见 DOM 残留 ⟪mN⟫ token';
+    else if (!pureOk) fail3c = '纯公式约束行被翻译或未保留公式节点';
+    record('3c. AtCoder 混合策略：内联公式 var/sup/sub 在译文中保留、纯公式约束行跳过、无 token 泄漏',
+      !!(t3c.state && t3c.state.translated) && !!at && at.done > 0 && at.varCount > 0 && at.han && !at.leak && pureOk,
+      [
+        '译文中 <var> 数=' + (at && at.varCount) + '，<sup>/<sub> 数=' + (at && at.supSubCount) + '（>0 即公式随译文保留）',
+        '译文首段样例=' + JSON.stringify(at && at.sample),
+        '译文含中文=' + (at && at.han) + '，GET_PAGE_STATE.translated=' + (t3c.state && t3c.state.translated),
+        '可见 DOM 无 ⟪mN⟫ token 残留=' + !(at && at.leak),
+        '纯公式约束行（保留原文、无 wrapper/data-ta、公式回归）=' + JSON.stringify(at && at.pure)
+      ],
+      fail3c);
+    await atcoderPage.close();
+
     /* ---------- 必测项 4：混合语言默认直翻 ---------- */
     const mixed = await newPage(browser);
     await mixed.goto(BASE + '/fixture-mixed.html?t=mixed', { waitUntil: 'load', timeout: 30000 });

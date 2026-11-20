@@ -8,7 +8,7 @@
 //   非流式（v1 不实现 SSE 流式）。
 //   默认模板：'You are a translation engine. Translate the user message into <LanguageName>.
 //   Output ONLY the translation, preserving original line breaks, numbering, HTML tags and
-//   placeholders like 【12345678】. Do not add explanations.'（systemPrompt 非空整体替换默认模板）
+//   placeholders like 【12345678】 and ⟪m0⟫. Do not add explanations.'（systemPrompt 非空整体替换默认模板）
 //   语言名映射（侦察 479 行语义）：zh-CN→Simplified Chinese、zh-TW→Traditional Chinese……
 //   响应校验 choices[0].message.content 为字符串，否则 BAD_RESPONSE。
 //   逐段请求（不做多段拼包，规避回填错位）；budget 0 = 不限（调度层每段独立封包）；
@@ -40,7 +40,7 @@
 
   function defaultPrompt(langName) {
     return 'You are a translation engine. Translate the user message into ' + langName +
-      '. Output ONLY the translation, preserving original line breaks, numbering, HTML tags and placeholders like 【12345678】. Do not add explanations.';
+      '. Output ONLY the translation, preserving original line breaks, numbering, HTML tags and placeholders like 【12345678】 and ⟪m0⟫. Do not add explanations.';
   }
 
   // 单段翻译：一次 chat/completions 请求（budget=0 不切分；占位符保护交给 prompt 约定）

@@ -28,6 +28,12 @@
   ];
   var FORMULA_SEL = FORMULA_SELECTORS.join(',');
 
+  // AtCoder 内联数学原语（var/sup/sub）：站点级保护，故意不进全局 FORMULA_SELECTORS——
+  // 否则所有站点的上标/变量记号（1st、x2）都会被误当公式挖空。仅 protectInlineMath
+  // 在 AtCoder（或测试钩子）下扫描这些元素，登记进同一个 placeholders Map。
+  var INLINE_MATH_SELECTORS = ['var', 'sup', 'sub'];
+  var INLINE_MATH_SEL = INLINE_MATH_SELECTORS.join(',');
+
   // 还原期 token 模糊匹配：容忍 MT 改括号/加空格（⟪m3⟫ → (m3)/【m 3】等变体）。
   // 仅当 id 在 protect 登记过才动文本，避免误伤正文自带的 "(m3)" 类记号。
   var TOKEN_RE = /[⟪({[«<【]\s*m\s*(\d+)\s*[⟫)}\]»>】]/g;
@@ -67,6 +73,87 @@
       if (a[i] !== b[i]) return false;
     }
     return true;
+  }
+
+  // 单个公式/内联数学节点的摘出：protect() 与 protectInlineMath() 共用，避免逻辑分叉。
+  // 打译禁标记 → 分配 token → 登记 placeholders（含 token 文本节点本尊，供 restoreAll
+  // 原位替换零残留）→ 原位换成 token 文本。isInlineMath=true 时额外跳过 code 与嵌套
+  // var/sup/sub 内层（<sup><var>M</var></sup> 只保护外层，杜绝 orphan token）。
+  function protectOne(el, skipSel, isInlineMath) {
+    if (el.closest('pre')) return false;                       // 代码块整段不动（原 protect 行为）
+    if (isInlineMath && el.closest('code')) return false;      // 内联代码里的数学记号不动
+    if (el.parentElement && el.parentElement.closest(FORMULA_SEL)) return false; // 去重根：只保护最外层
+    if (isInlineMath && el.parentElement && el.parentElement.closest(INLINE_MATH_SEL)) return false;
+    if (skipSel) {
+      try { if (el.closest(skipSel)) return false; } catch (e) { /* 选择器异常视为不跳过 */ }
+    }
+    try {
+      el.setAttribute('translate', 'no');
+      el.classList.add('notranslate');                          // 自卫：MT 端不再二次触碰
+    } catch (e) { /* 只读节点（如 SVG 内部）忽略 */ }
+    var id = '⟪m' + (seq++) + '⟫';                             // 非字母符号+数字 token
+    var tokenNode = document.createTextNode(' ' + id + ' ');
+    placeholders.set(id, {
+      node: el, parent: el.parentNode, next: el.nextSibling,
+      token: tokenNode, inline: !!isInlineMath
+    });
+    try {
+      el.parentNode.replaceChild(tokenNode, el);
+    } catch (e) {
+      placeholders.delete(id); // 替换失败（节点已脱管等）：撤销登记
+      return false;
+    }
+    return true;
+  }
+
+  // 译文 wrapper 内重复 token 的公式克隆：剥除 id 防 DOM id 重复（与 injector.cloneClean
+  // 同语义，但 formula.js 独立加载，不依赖 injector 是否就绪）。
+  function cloneForWrapper(node) {
+    var c = node.cloneNode(true);
+    if (c.nodeType === 1) {
+      if (c.hasAttribute && c.hasAttribute('id')) c.removeAttribute('id');
+      try {
+        var withIds = c.querySelectorAll('[id]');
+        for (var i = 0; i < withIds.length; i++) withIds[i].removeAttribute('id');
+      } catch (e) { /* 无 querySelectorAll 的实现忽略 */ }
+    }
+    return c;
+  }
+
+  // 内联数学兜底：MT（如 deepl-free 在数学密集句中）可能直接丢弃 ⟪mN⟫ token，
+  // 此时译文 wrapper 里无 token 触发下面的克隆分支，数学只留在原文位。对本轮已还原的
+  // inline 数学记录，检查其所属 wrapper 的 .ta-target-inner 是否已有该 token 的克隆，
+  // 没有则补一个。仅 inline 数学参与——KaTeX/MathJax 等既有公式行为逐字不变。
+  function fallbackInlineClones(consumed) {
+    consumed.forEach(function (rec, id) {
+      if (!rec.inline) return;
+      var node = rec.node;
+      if (!node || !node.isConnected) return;
+      // 常规 after 模式：.ta-original 是 wrapper 的兄弟（同在 unit 内），故先找
+      // [data-ta] 单元再取其直属 wrapper；flex/grid 外插兄弟另外兜底。
+      var unitEl = node.closest && node.closest('[data-ta]');
+      var w = null;
+      if (unitEl) {
+        try { w = unitEl.querySelector(':scope > .ta-target-wrapper'); } catch (e) { w = null; }
+        w = w || unitEl.querySelector('.ta-target-wrapper');
+        if (!w && unitEl.parentElement && unitEl.hasAttribute('data-ta-id')) {
+          try {
+            w = unitEl.parentElement.querySelector(
+              ':scope > .ta-target-wrapper[data-ta-for="' + unitEl.getAttribute('data-ta-id') + '"]');
+          } catch (e) { w = null; }
+        }
+      }
+      if (!w) return;
+      var inner = null;
+      try { inner = w.querySelector(':scope > .ta-target-inner'); } catch (e) { inner = w.querySelector('.ta-target-inner'); }
+      if (!inner) return;
+      var key = id.slice(2, -2); // ⟪m0⟫ → m0
+      try { if (inner.querySelector('[data-ta-math="' + key + '"]')) return; } catch (e) { /* 忽略 */ }
+      var c = cloneForWrapper(node);
+      c.setAttribute('data-ta-math', key);
+      inner.appendChild(c);
+      trackTouched(c);
+    });
   }
 
   TA.formula = {
@@ -126,37 +213,35 @@
       try { els = root.querySelectorAll(FORMULA_SEL); } catch (e) { return 0; }
       var n = 0;
       for (var i = 0; i < els.length; i++) {
-        var el = els[i];
-        if (el.closest('pre')) continue;                    // 代码块/CF样例整体不动
-        if (el.parentElement && el.parentElement.closest(FORMULA_SEL)) continue; // 去重根：只保护最外层
-        if (skipSel) {
-          try { if (el.closest(skipSel)) continue; } catch (e) { /* 选择器异常视为不跳过 */ }
-        }
-        try {
-          el.setAttribute('translate', 'no');
-          el.classList.add('notranslate');                  // 自卫：MT 端不再二次触碰
-        } catch (e) { /* 只读节点（如 SVG 内部）忽略 */ }
-        var id = '⟪m' + (seq++) + '⟫';                      // 非字母符号+数字 token
-        // 登记含 token 文本节点本尊（2026-11-15 评审修复）：restoreAll 兜底回插时
-        // 用公式节点替换 token 文本（与 restore() 的 replaceChild 路径一致，
-        // token 零残留），而非仅 insertBefore 到兄弟前——那会留下 ⟪mN⟫ 文本
-        var tokenNode = document.createTextNode(' ' + id + ' ');
-        placeholders.set(id, { node: el, parent: el.parentNode, next: el.nextSibling, token: tokenNode });
-        try {
-          el.parentNode.replaceChild(tokenNode, el);
-        } catch (e) {
-          placeholders.delete(id); // 替换失败（节点已脱管等）：撤销登记
-          continue;
-        }
-        n += 1;
+        if (protectOne(els[i], skipSel, false)) n += 1;
+      }
+      return n;
+    },
+
+    // —— 翻译前（AtCoder 专用）：内联数学 var/sup/sub → ⟪mN⟫ 占位符 ——
+    // 与 protect() 共用 protectOne，登记进同一个 placeholders Map，因此 restore /
+    // restoreAll / refreshTouchedHashes 无需改动即可覆盖。仅 AtCoder（或测试钩子
+    // window.__TA_ATCODER_MATH_TEST__）启用：var/sup/sub 是通用 HTML 元素，
+    // 全局保护会误伤所有站点的上标与变量记号。
+    protectInlineMath: function (root, opts) {
+      if (!root) return 0;
+      if (!/(^|\.)atcoder\.jp$/i.test(location.hostname) &&
+          !window.__TA_ATCODER_MATH_TEST__) return 0;
+      var skipSel = (opts && opts.skipInside) || null;
+      var els;
+      try { els = root.querySelectorAll(INLINE_MATH_SEL); } catch (e) { return 0; }
+      var n = 0;
+      for (var i = 0; i < els.length; i++) {
+        if (protectOne(els[i], skipSel, true)) n += 1;
       }
       return n;
     },
 
     // —— 翻译后：token → 公式原位还原 ——
     // 作用域覆盖原文 DOM 与译文 wrapper 内的 token（TreeWalker 全树扫描）。
-    // 同一 id 的公式节点只有一个：原文位置优先（文档序靠前先还原），译文中重复
-    // 出现的同 id token 删除残留文本（验收要求 token 不残留在最终可见 DOM）。
+    // 同一 id 的公式节点只有一个：原文位置优先（文档序靠前先还原）。译文中重复的
+    // 同 id token：inline 数学插克隆（公式进译文），KaTeX/MathJax 沿用删除路径
+    //（保持 .katex DOM 逐字节不变）；两条路径均做到 token 零残留。
     restore: function (root) {
       var scanRoot = root || document;
       var doc = scanRoot.ownerDocument || document;
@@ -166,7 +251,7 @@
       // 先收集后处理：splitText 会破坏遍历中的 walker
       var nodes = [];
       while (walker.nextNode()) nodes.push(walker.currentNode);
-      var consumed = new Set();
+      var consumed = new Map(); // id → rec（原文位真身，供 wrapper 内重复 token 插克隆/兜底）
       for (var i = 0; i < nodes.length; i++) {
         var tn = nodes[i];
         if (!tn || !tn.parentNode) continue;
@@ -178,23 +263,35 @@
           if (rec) {
             var head = tn.splitText(m.index);        // head = token 段
             var after = head.splitText(m[0].length); // after = token 后段
-            head.parentNode.replaceChild(rec.node, head); // 公式节点原位回归
+            head.parentNode.replaceChild(rec.node, head); // 原文位优先：真身回归
             placeholders.delete(id);
-            consumed.add(id);
+            consumed.set(id, rec);
             trackTouched(rec.node);
             tn = after;
             TOKEN_RE.lastIndex = 0;
           } else if (consumed.has(id)) {
-            // 同一 token 在译文中重复出现：公式已在原文位还原，删除残留 token 文本
+            // 同一 token 在译文 wrapper 内重复出现：原文位已是真身。
+            var crec = consumed.get(id);
             var head2 = tn.splitText(m.index);
             var after2 = head2.splitText(m[0].length);
-            head2.parentNode.removeChild(head2);
+            if (crec.inline) {
+              // AtCoder 内联数学：插克隆，让公式同时出现在译文句子里。
+              var c = cloneForWrapper(crec.node);
+              c.setAttribute('data-ta-math', id.slice(2, -2));
+              head2.parentNode.replaceChild(c, head2);
+            } else {
+              // KaTeX/MathJax：沿用旧删除路径——既有验收要求 .katex DOM 逐字节不变，
+              // 不能额外增一个克隆节点（公式仍在原文位，token 零残留）。
+              head2.parentNode.removeChild(head2);
+            }
             tn = after2;
             TOKEN_RE.lastIndex = 0;
           }
           // 未知 id（正文原本就有的 "(m3)" 类记号）：保留不动，避免误删正文
         }
       }
+      // MT 直接丢 token 时没有重复 token 可克隆 → inline 数学走兜底补克隆（不影响 KaTeX）
+      fallbackInlineClones(consumed);
     },
 
     // —— 兜底还原：未消费公式全部回归原位 ——

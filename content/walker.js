@@ -75,6 +75,26 @@
   // 原样保留进原文与译文（防止 "Run `npm install` to install" 译文缺码）
   var INLINE_CODE_SEL = 'code, kbd, samp, var';
 
+  // —— AtCoder 混合策略：纯公式/纯符号单元跳过 ——
+  // 不能"含公式就整段跳过"（AtCoder 题面几乎每段都有 <var>，整段跳过等于全篇不翻）。
+  // 只在 AtCoder（或测试钩子）下启用：formula.js 的 protect/protectInlineMath 已把
+  // 公式换成 ⟪mN⟫ token、内联元素换成 【N】 token，本判定把 token 与数学符号/数字/
+  // 标点/空白全部剔除，剩余内容若没有足够的可翻译字母，说明整段只有公式，保留原文。
+  var FORMULA_TOKEN_STRIP_RE = /⟪\s*m\s*\d+\s*⟫|【\s*\d{8}\s*】/g;
+  var MATH_NOISE_RE = /[\s\d≤≥<>≠≈≡⊕⊗⊙∈∉∋∑∏∫√∞±×÷→←↔⇒⇔\^_{}\[\]()（）,，;；:：=\|\/\\+*·…、。．'"“”‘’`~%#&@⟪⟫【】\-]/gu;
+
+  function pureFormulaSkipEnabled() {
+    return /(^|\.)atcoder\.jp$/i.test(location.hostname) || !!window.__TA_ATCODER_MATH_TEST__;
+  }
+
+  function isPureFormulaUnit(text) {
+    var s = String(text || '')
+      .replace(FORMULA_TOKEN_STRIP_RE, '')
+      .replace(MATH_NOISE_RE, '');
+    var letters = (s.match(/\p{L}/gu) || []).length;
+    return letters < 2 || s.length < 3;
+  }
+
   // 从 el 起沿父链检查排除选择器（到 stopAt 为止；stopAt 为 null 时查到文档根）
   function isExcluded(el, exclSel, stopAt) {
     for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
@@ -283,6 +303,9 @@
         // 直属文本 + 占位符
         var built = buildUnitText(el, ctx, cand.forced);
         var text = built.text;
+        // AtCoder 混合策略：纯公式/纯符号单元（如 <li><var>1 ≤ N ≤ 3000</var></li>）
+        // 保留原文不翻译；其余含公式段落仍正常收集（去掉公式 token 后仍有散文）。
+        if (pureFormulaSkipEnabled() && isPureFormulaUnit(text)) continue;
         if (text.length < minCount) continue;                 // trim 已在构建时完成
         if (!/\p{L}/u.test(text)) continue;                   // 纯数字/符号段跳过
         if (minWords > 1) {

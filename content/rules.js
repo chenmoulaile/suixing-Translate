@@ -59,6 +59,15 @@
         '#frame-description-container iframe', 'iframe', 'nav', 'header', 'footer',
         '.navbar', '#prob-right-panel', 'script', 'style'
       ]
+    },
+    // AtCoder 题面：内联数学 <var>/<sup>/<sub> 由 content/formula.js 的
+    // protectInlineMath() 以同一占位符通道保护（见该文件站点级选择器说明）。
+    // 题面正文根命中 #task-statement / div.statement / .part section；
+    // 样例 pre 与导航头尾不翻译。
+    {
+      pattern: 'atcoder.jp',
+      selectors: ['#task-statement', 'div.statement', '.part section', '#task-statement section'],
+      excludeSelectors: ['pre', 'nav', 'header', 'footer', 'script']
     }
   ];
 

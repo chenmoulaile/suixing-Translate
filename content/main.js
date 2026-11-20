@@ -153,6 +153,8 @@
         if (run !== runSeq) return; // 等待期间被还原/重开，作废
         // 公式时机 ②：公式节点摘出换 ⟪mN⟫ 占位符（token 随句送 MT）
         TA.formula.protect(root);
+        // AtCoder 内联数学（var/sup/sub）走同一占位符通道（站点级，非全局选择器）
+        TA.formula.protectInlineMath(root);
         var opts = collectOpts(settings);
         var units = TA.walker.collectUnits(root, opts);
         if (!units.length) {

@@ -33,7 +33,7 @@
 
   function defaultPrompt(langName) {
     return 'You are a translation engine. Translate the user message into ' + langName +
-      '. Output ONLY the translation, preserving original line breaks, numbering, HTML tags and placeholders like 【12345678】. Do not add explanations.';
+      '. Output ONLY the translation, preserving original line breaks, numbering, HTML tags and placeholders like 【12345678】 and ⟪m0⟫. Do not add explanations.';
   }
 
   // 构建 system prompt：cfg.systemPrompt 覆盖默认模板，再追加术语/上下文（仅非空字符串）
