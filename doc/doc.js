@@ -555,7 +555,8 @@
             chain = chain.then(function () {
               return pdf.getPage(pageNo).then(function (page) { return page.getTextContent(); })
                 .then(function (tc) {
-                  pdfItemsToParagraphs(tc.items).forEach(function (para) {
+                  var paras = pdfItemsToParagraphs(tc.items);
+                  paras.forEach(function (para) {
                     segments.push(para);
                     groups.push('第 ' + pageNo + ' 页');
                   });
@@ -606,7 +607,7 @@
         var threshold = Math.max(lines[i - 1].height, lines[i].height, 8) * 1.7;
         if (gap > threshold) { paras.push(cur.join('\n')); cur = []; }
       }
-      cur.push(l.text);
+      cur.push(lines[i].text);
     }
     if (cur.length) paras.push(cur.join('\n'));
     return paras.map(function (p) { return p.trim(); }).filter(function (p) { return p.length > 0; });
@@ -981,7 +982,9 @@
     parseSubtitle: parseSubtitle,
     paragraphsFromText: paragraphsFromText,
     paragraphsFromHtml: paragraphsFromHtml,
-    makeChunks: makeChunks
+    makeChunks: makeChunks,
+    // 测试入口：从 ArrayBuffer 解析 PDF 为段落（修复 l-is-not-defined 回归用）
+    parsePdfBuffer: function (buffer) { return parsePdf(buffer); }
   };
 
   if (document.readyState === 'loading') {

@@ -1,5 +1,11 @@
 # 随行翻译（ParaTranslate）更新日志
 
+## v1.5.1 —— 修复 PDF 文档翻译失效
+
+- **根因**：`doc/doc.js` 的 `pdfItemsToParagraphs()` 在段落拼接循环里误用了已出作用域的回调参数 `l`（`cur.push(l.text)`，应为 `cur.push(lines[i].text)`），抛 `l is not defined`；该错误被单页 `.catch()` 静默吞掉，导致 paragraphs 为空、误报"未能在 PDF 中提取到文本（可能是扫描版图片 PDF）"。所有 PDF 都无法翻译。
+- **修复**：改为 `cur.push(lines[i].text)`。实测用户提供的 `statement_25419.pdf`（2 页、文本层完整）正确解析为 8 段并全部翻译完成，无错误提示。
+- **测试**：新增文本型 PDF fixture（`tests/fixtures/fixture-text.pdf`）+ 冒烟测试 13（断言 PDF 能提取段落），端到端 23/23、冒烟 13/13 通过。
+
 ## v1.5.0 —— AtCoder 内联公式保护（混合策略）
 
 - **AtCoder 公式不再丢失**：AtCoder 题面用内联 `<var>`/`<sup>`/`<sub>` 渲染数学，此前走 `【N】` 内联占位符路径，默认 deepl-free 在数学密集上下文会吞掉 token 导致公式永久消失。现新增 `protectInlineMath()`（仅 atcoder.jp + 测试钩子生效），把内联数学改用 `⟪mN⟫` 保护通道——公式节点以 DOM 引用保存，`restore()` 在译文句子里插入克隆、`restoreAll()` 兜底，即使翻译器丢 token 公式也 100% 保留。

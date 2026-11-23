@@ -1,5 +1,5 @@
 {
-  "passed": 12,
+  "passed": 13,
   "failed": 0,
   "results": [
     {
@@ -91,6 +91,13 @@
       "evidence": [
         "顶帧悬浮球数=1",
         "iframe 内译文=[\"一个夏日，萨沙和他的朋友决定合理地利用空闲时间。他们决定买个西瓜，尽情享受夏日时\",\"他们想把西瓜切成两块，使每块的重量都是奇数公斤。请编写一个程序，判断这是否可行。\"]"
+      ]
+    },
+    {
+      "name": "13. PDF 解析回归：文本型 PDF 能提取段落（修复 l-is-not-defined）",
+      "passed": true,
+      "evidence": [
+        "{\"ok\":true,\"kind\":\"text\",\"segs\":1,\"sample\":\"The Quick Brown Fox\\nHello world, this is a PDF regression test.\\nProgramming cont\"}"
       ]
     }
   ]

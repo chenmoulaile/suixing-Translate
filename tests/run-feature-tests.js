@@ -322,6 +322,31 @@ async function main() {
         ['EXCEPTION=' + String((e && e.message) || e)]);
     }
 
+    /* 13. PDF 解析回归（l-is-not-defined bug）：用文本型 PDF 验证能提取段落 */
+    try {
+      const fs = require('fs');
+      const b64 = fs.readFileSync(path.join(__dirname, 'fixtures', 'fixture-text.pdf')).toString('base64');
+      const extId = await WE(() => chrome.runtime.id);
+      const dpage = await browser.newPage();
+      await dpage.goto('chrome-extension://' + extId + '/doc/doc.html', { waitUntil: 'load', timeout: 20000 });
+      await sleep(400);
+      const parsed = await dpage.evaluate(async (b) => {
+        const bin = atob(b), arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        try {
+          const r = await TA.doc.parsePdfBuffer(arr.buffer);
+          return { ok: true, kind: r.kind, segs: r.segments.length, sample: (r.segments[0] || '').slice(0, 80) };
+        } catch (e) { return { ok: false, err: String((e && e.message) || e) }; }
+      }, b64);
+      record('13. PDF 解析回归：文本型 PDF 能提取段落（修复 l-is-not-defined）',
+        parsed.ok && parsed.segs > 0 && /Quick Brown Fox/i.test(parsed.sample),
+        [JSON.stringify(parsed)]);
+      await dpage.close();
+    } catch (e) {
+      record('13. PDF 解析回归：文本型 PDF 能提取段落（修复 l-is-not-defined）', false,
+        ['EXCEPTION=' + String((e && e.message) || e)]);
+    }
+
     await page.close();
     const passed = results.filter((r) => r.passed).length;
     const failed = results.length - passed;
