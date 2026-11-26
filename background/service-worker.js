@@ -1,13 +1,13 @@
 // background/service-worker.js —— MV3 classic service worker 入口
 // 第一条语句按固定顺序 importScripts（协议定稿顺序，禁止顶层之外的延迟初始化依赖）：
 // 共享层（defaults/langmap/md5）→ 术语库（terminology）→ 基础设施（http/cache/queue）
-// → 13 个适配器（含 claude/gemini/deepseek/ollama/dsh-free）→ 调度层。
+// → 12 个适配器（含 claude/gemini/deepseek/ollama）→ 调度层。
 importScripts('../shared/defaults.js', '../shared/langmap.js', '../shared/md5.js',
   'terminology.js', 'http.js', 'cache.js', 'queue.js',
   'adapters/deepl-free.js', 'adapters/deepl-api.js', 'adapters/google.js', 'adapters/youdao.js',
   'adapters/iflyrec.js', 'adapters/caiyun.js', 'adapters/edge.js', 'adapters/openai.js',
   'adapters/claude.js', 'adapters/gemini.js', 'adapters/deepseek.js', 'adapters/ollama.js',
-  'adapters/dsh-free.js', 'adapters/index.js');
+  'adapters/index.js');
 
 var TA = globalThis.TA;
 

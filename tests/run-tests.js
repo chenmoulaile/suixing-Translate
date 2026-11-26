@@ -200,12 +200,12 @@ async function main() {
       await sleep(1000);
       const bad = noTaErr(p.__logs);
       record('1. 扩展被 headless Chromium 加载（service worker 启动、内容脚本注入、GET_FEATURES 可用）',
-        !!probe.ta && Array.isArray(probe.adapters) && probe.adapters.length === 13 &&
+        !!probe.ta && Array.isArray(probe.adapters) && probe.adapters.length === 12 &&
         !!features.ok && bad.length === 0,
         [
           'Chromium: ' + await browser.userAgent(),
           'SW target: ' + swUrl,
-          'SW 内 importScripts 全部就位: TA=' + probe.ta + ' adapters(' + (probe.adapters || []).join(',') + ')=' + probe.adapters.length + '/13',
+          'SW 内 importScripts 全部就位: TA=' + probe.ta + ' adapters(' + (probe.adapters || []).join(',') + ')=' + probe.adapters.length + '/12',
           'GET_FEATURES: ok=' + features.ok + ' features=' + JSON.stringify(features.features) + ' themes=' + (features.themes || []).length + (features.ok ? '' : ' sendErr=' + (features.__sendErr || '')),
           '页面 console 无 [TA] 前置文件缺失类报错（收集 ' + p.__logs.length + ' 条 console/异常: ' + p.__logs.slice(0, 2).join(' | ').slice(0, 120) + '）'
         ],

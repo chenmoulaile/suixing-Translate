@@ -63,12 +63,6 @@
       'ja': 'Japanese', 'ko': 'Korean', 'de': 'German', 'fr': 'French',
       'es': 'Spanish', 'pt': 'Portuguese', 'it': 'Italian', 'hi': 'Hindi'
     },
-    // DeepSeek Harness 免费（dsh-free）：照 openai/deepseek 的语言英文名嵌入 prompt；11 种全支持
-    'dsh-free': {
-      'zh-CN': 'Simplified Chinese', 'zh-TW': 'Traditional Chinese', 'en': 'English',
-      'ja': 'Japanese', 'ko': 'Korean', 'de': 'German', 'fr': 'French',
-      'es': 'Spanish', 'pt': 'Portuguese', 'it': 'Italian', 'hi': 'Hindi'
-    },
     'ollama': {
       'zh-CN': 'Simplified Chinese', 'zh-TW': 'Traditional Chinese', 'en': 'English',
       'ja': 'Japanese', 'ko': 'Korean', 'de': 'German', 'fr': 'French',

@@ -343,22 +343,6 @@
         </div>
       </div>
 
-      <!-- 本地免费模型（OpenAI 兼容）卡片 -->
-      <div class="svc-card">
-        <div class="svc-head"><b>本地免费模型（dsh-free，Local Free Model）</b></div>
-        <div class="svc-body">
-          <div class="row">
-            <label for="dshBaseUrl">Base URL</label>
-            <input type="url" id="dshBaseUrl" spellcheck="false" placeholder="http://127.0.0.1:19281/v1">
-            <div class="inline">
-              <button type="button" id="btnDshAuth" class="ghost-btn">授权该域名</button>
-              <span id="dshAuthTip" class="tip inline-tip"></span>
-            </div>
-            <p class="tip">本机运行着的本地 OpenAI 兼容模型服务（GET {base}/models 与 POST {base}/chat/completions，无需密钥；模型未配置时自动选速度最快的）。</p>
-          </div>
-        </div>
-      </div>
-
       <!-- 免 key 服务说明行 -->
       <div class="svc-card">
         <div class="svc-head"><b>以下服务无需密钥</b></div>

@@ -77,7 +77,7 @@
     version: 2,
     targetLang: 'zh-CN',
     primaryService: 'deepl-free',
-    serviceChain: ['deepl-free', 'google', 'edge', 'caiyun', 'youdao', 'dsh-free'],
+    serviceChain: ['deepl-free', 'google', 'edge', 'caiyun', 'youdao'],
     translateMode: 'bilingual',
     scopeMode: 'smart',
     translationPosition: 'after',
