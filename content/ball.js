@@ -966,19 +966,25 @@
   function mapLimit(items, limit, worker) {
     return new Promise(function (resolve, reject) {
       var results = new Array(items.length);
-      var idx = 0, active = 0, finished = 0, errored = false;
+      var idx = 0, active = 0, finished = 0, errored = false, allErrors = null;
       function launch() {
         while (active < limit && idx < items.length) {
           (function (i) {
             active++;
             Promise.resolve().then(function () { return worker(items[i], i); })
-              .then(function (v) { results[i] = v; },
-                    function (e) { if (!errored) { errored = true; reject(e); } })
+              .then(function (v) { results[i] = v; }, function (e) {
+                // 单个 chunk 失败：记错并回填空，不打断其它 chunk（保证最终都有显示值）
+                if (results[i] == null) results[i] = '';
+                (allErrors = allErrors || []).push(e);
+              })
               .then(function () {
                 active--;
                 finished++;
-                if (!errored && finished === items.length) resolve(results);
-                else if (!errored) launch();
+                if (finished === items.length) {
+                  var hasRealErrors = (allErrors || []).some(function (e) { return e && e.code !== 'CANCELLED'; });
+                  if (hasRealErrors) reject(allErrors[0]);
+                  else resolve(results);
+                } else launch();
               });
           })(idx++);
         }
@@ -1091,18 +1097,44 @@
       var target = sideEls.dst.value || 'zh-CN';
       var source = sideEls.src.value || 'auto';
       var chunks = splitChunks(text);
+      runTranslateChunks(0);
+    } catch (e) {
+      renderSideError((e && e.message) || '翻译失败，请重试', e && e.code);
+      finish();
+    }
+
+    // 失败后重试（服务可能从冷却/打断中恢复）：最多 2 轮
+    var sideTranslateRetries = 0;
+    function runTranslateChunks(round) {
       mapLimit(chunks, 3, function (chunk) { return translateViaPipeline(chunk, target); })
         .then(function (outs) {
-          var translated = outs.join('\n\n'); // 保留段间空行
+          // 容错渲染：即使个别 chunk 失败也展示已拿到的译文
+          var translated = outs.filter(function (x) { return typeof x === 'string' && x; }).join('\n\n');
           renderSideResult(text, translated, source, target);
           pushHistory(source, target, text, translated);
+          finish();
         })
         .catch(function (e) {
           var msg = (e && e.message) ||
             (typeof TA.errorText === 'function' ? TA.errorText(e || {}) : '翻译失败');
+          if (e && e.code === 'CANCELLED') {
+            renderSideError(msg, e.code);
+            finish();
+            return;
+          }
+          if (sideTranslateRetries < 2) {
+            sideTranslateRetries++;
+            showTip('正在重试(' + (sideTranslateRetries) + '/2)…', 900);
+            setTimeout(function () { runTranslateChunks(sideTranslateRetries); }, 400);
+            return;
+          }
           renderSideError(msg, e && e.code);
+          finish();
         })
-        .then(finish, finish); // then/catch 之后的兜底收尾：即便 render 抛错也恢复 UI
+        .then(function () { /* 首轮成功时 */ }, function () {});
+    }
+    try {
+      runTranslateChunks(0);
     } catch (e) {
       console.debug('[TA][ball]', 'doTranslate 失败', e);
       renderSideError((e && e.message) || '翻译失败，请重试', e && e.code);

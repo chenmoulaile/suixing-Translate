@@ -1,5 +1,11 @@
 # 随行翻译（ParaTranslate）更新日志
 
+## v1.5.2 —— 侧边栏翻译健壮化（容错 + 自动重试）
+
+- **mapLimit 容错**：单个 chunk 翻译失败不再整批断档，用原文填空，最终结果区仍能展示已翻译内容，不反用户设计。
+- **侧边栏自动重试**：`doTranslate` 链上失败（非取消类）最多重试 2 次（400ms 间隔），进度条/提示显示「正在重试」；最终失败才给出真实错误码和提示（如 deepl-free 一次性使用上限）。
+- **先实测**：sidebar-on-fixture 恒定成功，失败路径用户可见但展开清晰。
+
 ## v1.5.1 —— 修复 PDF 文档翻译失效
 
 - **根因**：`doc/doc.js` 的 `pdfItemsToParagraphs()` 在段落拼接循环里误用了已出作用域的回调参数 `l`（`cur.push(l.text)`，应为 `cur.push(lines[i].text)`），抛 `l is not defined`；该错误被单页 `.catch()` 静默吞掉，导致 paragraphs 为空、误报"未能在 PDF 中提取到文本（可能是扫描版图片 PDF）"。所有 PDF 都无法翻译。
