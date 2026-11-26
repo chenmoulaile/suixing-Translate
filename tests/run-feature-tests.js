@@ -61,7 +61,7 @@ async function main() {
   try {
     for (const p of await browser.pages()) await p.close().catch(() => {});
 
-    /* 1. 后台：12 适配器 / 术语库 / 新默认键 */
+    /* 1. 后台：13 适配器 / 术语库 / 新默认键 */
     const bg = await WE(() => {
       const TA = globalThis.TA;
       const ids = TA && TA.adapters && TA.adapters.ids ? TA.adapters.ids() : [];
@@ -80,8 +80,8 @@ async function main() {
         presets, hasTerms: /保证金|margin/i.test(terms)
       };
     });
-    record('1. 后台 12 适配器 + 术语库 + 新默认键就绪',
-      bg.ids.length === 12 && bg.hasNewServices && bg.defaultsKeys.length === 4 &&
+    record('1. 后台 13 适配器 + 术语库 + 新默认键就绪',
+      bg.ids.length === 13 && bg.hasNewServices && bg.defaultsKeys.length === 4 &&
       bg.layout === 'block' && bg.serviceKeys.length === 4 && bg.presets.length >= 8 && bg.hasTerms,
       [JSON.stringify(bg)]);
 

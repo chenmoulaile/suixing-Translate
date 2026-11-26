@@ -46,7 +46,8 @@
     ['claude', 'Claude', true],
     ['gemini', 'Google Gemini', true],
     ['deepseek', 'DeepSeek', true],
-    ['ollama', '本地 Ollama（无需密钥）', false]
+    ['ollama', '本地 Ollama（无需密钥）', false],
+    ['dsh-free', 'DeepSeek Harness 免费（our free model）', false]
   ];
 
   // 目标语言兜底表（shared/defaults.js 的 TA.TARGET_LANGS 就绪后自动切换到它）

@@ -3,10 +3,10 @@
   "failed": 0,
   "results": [
     {
-      "name": "1. 后台 12 适配器 + 术语库 + 新默认键就绪",
+      "name": "1. 后台 13 适配器 + 术语库 + 新默认键就绪",
       "passed": true,
       "evidence": [
-        "{\"ids\":[\"deepl-free\",\"deepl-api\",\"google\",\"youdao\",\"iflyrec\",\"caiyun\",\"edge\",\"openai\",\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"hasNewServices\":true,\"defaultsKeys\":[\"ai\",\"subtitle\",\"dictionary\",\"imageTranslate\"],\"layout\":\"block\",\"serviceKeys\":[\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"presets\":[\"legal\",\"medical\",\"ecommerce\",\"education\",\"gaming\",\"novel\",\"finance\",\"tech\"],\"hasTerms\":true}"
+        "{\"ids\":[\"deepl-free\",\"deepl-api\",\"google\",\"youdao\",\"iflyrec\",\"caiyun\",\"edge\",\"openai\",\"claude\",\"gemini\",\"deepseek\",\"ollama\",\"dsh-free\"],\"hasNewServices\":true,\"defaultsKeys\":[\"ai\",\"subtitle\",\"dictionary\",\"imageTranslate\"],\"layout\":\"block\",\"serviceKeys\":[\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"presets\":[\"legal\",\"medical\",\"ecommerce\",\"education\",\"gaming\",\"novel\",\"finance\",\"tech\"],\"hasTerms\":true}"
       ]
     },
     {
@@ -82,7 +82,7 @@
       "name": "11. 默认配置：deepl-free 首选 + 划词/悬停默认开启 + 悬停延时 200ms",
       "passed": true,
       "evidence": [
-        "{\"primary\":\"deepl-free\",\"chain\":[\"deepl-free\",\"google\",\"edge\",\"caiyun\",\"youdao\"],\"hover\":true,\"sel\":true,\"delay\":200}"
+        "{\"primary\":\"deepl-free\",\"chain\":[\"deepl-free\",\"google\",\"edge\",\"caiyun\",\"youdao\",\"dsh-free\"],\"hover\":true,\"sel\":true,\"delay\":200}"
       ]
     },
     {

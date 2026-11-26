@@ -18,7 +18,7 @@
     version: 2,
     targetLang: 'zh-CN',
     primaryService: 'deepl-free',
-    serviceChain: ['deepl-free', 'google', 'edge', 'caiyun', 'youdao'],
+    serviceChain: ['deepl-free', 'google', 'edge', 'caiyun', 'youdao', 'dsh-free'],
     translateMode: 'bilingual',
     scopeMode: 'smart',
     translationPosition: 'after',
@@ -154,6 +154,9 @@
 
   /* ================= 服务元数据 ================= */
 
+  // 本地免费模型默认 Base URL（与 background/adapters/dsh-free.js 一致）
+  const DEFAULT_DSH_BASE = 'http://127.0.0.1:19281/v1';
+
   const SVC_NAMES = {
     google: '谷歌翻译',
     'deepl-free': 'DeepL（免费）',
@@ -166,11 +169,12 @@
     claude: 'Claude',
     gemini: 'Google Gemini',
     deepseek: 'DeepSeek',
-    ollama: '本地 Ollama（无需密钥）'
+    ollama: '本地 Ollama（无需密钥）',
+    'dsh-free': 'DeepSeek Harness 免费（our free model）'
   };
   const SVC_NEEDS_KEY = {
     'deepl-api': true, openai: true,
-    claude: true, gemini: true, deepseek: true, ollama: false
+    claude: true, gemini: true, deepseek: true, ollama: false, 'dsh-free': false
   };
   // 新服务密钥字段名映射（ollama 不需要密钥，但其 baseUrl 存在即视为已配置）
   const KEY_FIELDS = {
@@ -235,6 +239,10 @@
   const ollamaPrompt = $('ollamaPrompt');
   const btnOllamaAuth = $('btnOllamaAuth');
   const ollamaAuthTip = $('ollamaAuthTip');
+  // 本地免费模型（OpenAI 兼容）：Base URL 配置字段（照 deepseek/openai 的 Base URL 字段方式）
+  const dshBaseUrl = $('dshBaseUrl');
+  const btnDshAuth = $('btnDshAuth');
+  const dshAuthTip = $('dshAuthTip');
   // ⑦ AI 与扩展场景
   const aiEnableTerms = $('aiEnableTerms');
   const aiTermsPreset = $('aiTermsPreset');
@@ -540,6 +548,7 @@
     if (ollamaModel) ollamaModel.value = o.model || 'llama3.1:8b';
     if (ollamaTemp) ollamaTemp.value = String(o.temperature != null ? o.temperature : 0.2);
     if (ollamaPrompt) ollamaPrompt.value = o.systemPrompt || '';
+    if (dshBaseUrl) dshBaseUrl.value = ((S.services['dsh-free'] && S.services['dsh-free'].dshBaseUrl) || DEFAULT_DSH_BASE);
     // 密钥输入框永远显示空值 + *** 占位符（仅内存影子保存明文）
     [['claude', claudeApiKey, claudeKeyBadge], ['gemini', geminiApiKey, geminiKeyBadge],
      ['deepseek', deepseekApiKey, deepseekKeyBadge]].forEach(function (tuple) {
@@ -639,7 +648,8 @@
     { input: claudeBaseUrl, btn: btnClaudeAuth, tip: claudeAuthTip, official: /(^|\.)api\.anthropic\.com$/i },
     { input: geminiBaseUrl, btn: btnGeminiAuth, tip: geminiAuthTip, official: /(^|\.)generativelanguage\.googleapis\.com$/i },
     { input: deepseekBaseUrl, btn: btnDeepseekAuth, tip: deepseekAuthTip, official: /(^|\.)api\.deepseek\.com$/i },
-    { input: ollamaBaseUrl, btn: btnOllamaAuth, tip: ollamaAuthTip, official: /^(localhost|127\.0\.0\.1)$/i }
+    { input: ollamaBaseUrl, btn: btnOllamaAuth, tip: ollamaAuthTip, official: /^(localhost|127\.0\.0\.1)$/i },
+    { input: dshBaseUrl, btn: btnDshAuth, tip: dshAuthTip, official: /^(localhost|127\.0\.0\.1)$/i }
   ];
 
   function updateAuthBtn() {
@@ -1319,6 +1329,13 @@
       temperature: svcTemp(ollamaTemp, 0.2, 'Ollama'),
       systemPrompt: ollamaPrompt ? ollamaPrompt.value : ''
     };
+    // 本地免费模型（dsh-free）：Base URL 校验（留空 = 默认），保存整段服务配置
+    const dBase = (dshBaseUrl && String(dshBaseUrl.value).trim()) || '';
+    if (dBase && !isValidUrl(dBase)) {
+      errs.push('本地免费模型 Base URL 不是合法的 http(s) URL');
+      markErr(dshBaseUrl);
+    }
+    out.services['dsh-free'] = Object.assign({}, (S.services && S.services['dsh-free']) || {}, { dshBaseUrl: dBase || DEFAULT_DSH_BASE });
 
     // ④ 网站规则
     out.urlPattern = {
