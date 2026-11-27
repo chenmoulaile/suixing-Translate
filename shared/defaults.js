@@ -34,16 +34,17 @@
     { code: 'hi', name: 'हिन्दी' }
   ];
 
-  // 译文主题 24 档（样式实现由 C 的 styles/themes.css 按 data-ta-theme / 行内 inner 选择器落地；
+  // 译文主题 26 档（样式实现由 C 的 styles/themes.css 按 data-ta-theme / 行内 inner 选择器落地；
   // 顺序 = 官方全集顺序，options ② 区预览网格按本数组渲染）
   TA.THEMES = [
     'none', 'grey', 'dashed', 'thinDashed', 'dotted', 'underline',
     'nativeUnderline', 'nativeDashed', 'nativeDotted', 'wavy',
     'dashedBorder', 'solidBorder', 'dividingLine', 'highlight', 'marker', 'marker2',
-    'background', 'opacity', 'mask', 'paper', 'blockquote', 'weakening', 'italic', 'bold'
+    'background', 'opacity', 'mask', 'paper', 'blockquote', 'weakening', 'italic', 'bold',
+    'doubleUnderline', 'pill'
   ];
 
-  // 24 档主题中文名映射（options 预览网格 / popup 展示用）
+  // 26 档主题中文名映射（options 预览网格 / popup 展示用）
   // 注：nativeUnderline/nativeDashed/nativeDotted 三档设计稿未给中文名，按语义补齐
   TA.THEME_NAMES = {
     none: '无',
@@ -69,7 +70,9 @@
     blockquote: '引用',
     weakening: '弱化',
     italic: '斜体',
-    bold: '加粗'
+    bold: '加粗',
+    doubleUnderline: '双下划线',
+    pill: '胶囊描边'
   };
 
   // settings 默认值（v0.2 schema 定稿；读取时经 TA.mergeDefaults 深合并回填缺省键）

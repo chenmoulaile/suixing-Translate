@@ -14,7 +14,7 @@
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "web_accessible_resources": [
     {
-      "resources": ["styles/content.css", "styles/themes.css", "doc/doc.html", "styles/subtitle.css", "styles/dictionary.css", "styles/image-translate.css", "styles/dual-column.css", "styles/sidebar.css"],
+      "resources": ["styles/content.css", "styles/themes.css", "doc/doc.html", "styles/subtitle.css", "styles/dictionary.css", "styles/image-translate.css", "styles/dual-column.css", "styles/sidebar.css", "vendor/katex.min.css", "vendor/fonts/*"],
       "matches": ["http://*/*", "https://*/*"]
     }
   ],
@@ -28,6 +28,9 @@
     "matches": ["http://*/*", "https://*/*"],
     "js": [
       "shared/defaults.js",
+      "vendor/markdown-it.min.js",
+      "vendor/katex.min.js",
+      "shared/markdown.js",
       "content/core.js",
       "content/rules.js",
       "content/formula.js",
@@ -43,6 +46,7 @@
       "content/main.js"
     ],
     "css": [
+      "vendor/katex.min.css",
       "styles/content.css",
       "styles/themes.css",
       "styles/ball.css",

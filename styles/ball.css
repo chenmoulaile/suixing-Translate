@@ -160,11 +160,63 @@
   user-select: none;
 }
 
-/* ==================== 二级子面板（主题选择 / 导出格式） ==================== */
+/* ==================== 二级子面板（旁弹：主题选择 / 导出格式） ====================
+   sub 是 menu 的兄弟、球的子节点：position:fixed 用 JS 视口坐标定位，
+   这样才能绕过主菜单 overflow:auto 的裁剪。球本身无 filter/transform，
+   fixed 不被劫持为包含块（见球本体注释）。坐标由 ball.js openSub/positionSub 写入。 */
+.ta-ball-submenu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
+  min-width: 168px;
+  max-width: min(280px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 6px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f2328;
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ta-ball-submenu.ta-sub-show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.ta-float-ball[data-ta-ball-side="left"] .ta-ball-submenu { transform-origin: top left; }
 
-.ta-ball-sub { padding: 2px 0 6px; }
+/* 指向父项的箭头：球右缘时子菜单向左弹，箭头贴右缘；左缘则贴左缘。
+   越界翻转后箭头仍固定在一侧，属于可接受的视觉近似（面板本身已钳制在视口内）。 */
+.ta-ball-submenu::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  right: -5px;
+  width: 9px;
+  height: 9px;
+  background: inherit;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  transform: rotate(45deg);
+}
+.ta-float-ball[data-ta-ball-side="left"] .ta-ball-submenu::before {
+  right: auto;
+  left: -5px;
+  border: none;
+  border-left: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
 
-/* 主题 24 档：3 列小按钮网格 */
+.ta-ball-sub, .ta-ball-submenu { padding: 2px 0 6px; }
+
+/* 主题 26 档：3 列小按钮网格 */
 .ta-ball-themes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -194,20 +246,25 @@
 }
 
 /* 导出格式竖排按钮 */
-.ta-ball-sub .ta-ball-item { padding-left: 22px; }
+.ta-ball-sub .ta-ball-item,
+.ta-ball-submenu .ta-ball-item { padding-left: 22px; }
 
 /* ==================== 暗色模式 ==================== */
 
 @media (prefers-color-scheme: dark) {
-  .ta-ball-menu {
+  .ta-ball-menu,
+  .ta-ball-submenu {
     background: #26282e;
     color: #e6e8eb;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.07);
   }
   .ta-ball-item:hover { background: rgba(112, 137, 255, 0.16); }
-  .ta-ball-sep { background: rgba(255, 255, 255, 0.1); }
-  .ta-ball-group-label { color: #8a9099; }
-  .ta-ball-theme-btn { border-color: rgba(255, 255, 255, 0.14); }
+  .ta-ball-menu .ta-ball-sep,
+  .ta-ball-submenu .ta-ball-sep { background: rgba(255, 255, 255, 0.1); }
+  .ta-ball-menu .ta-ball-group-label,
+  .ta-ball-submenu .ta-ball-group-label { color: #8a9099; }
+  .ta-ball-menu .ta-ball-theme-btn,
+  .ta-ball-submenu .ta-ball-theme-btn { border-color: rgba(255, 255, 255, 0.14); }
   .ta-ball-theme-btn:hover,
   .ta-ball-theme-btn.ta-theme-cur {
     border-color: #7089ff;
@@ -224,6 +281,7 @@
 @media print {
   .ta-float-ball,
   .ta-ball-menu,
+  .ta-ball-submenu,
   .ta-ball-tip { display: none !important; }
 }
 

@@ -1,0 +1,232 @@
+/* styles/ball.css —— 悬浮球 v0.2（C 全面还原实现员）
+   覆盖 content.css 中 v0.1 的球样式段（本文件在其后加载），并新增：
+   菜单（点击球展开）+ 二级子面板（主题选择 / 导出双语）+ 引导 tooltip +
+   左右位置（settings.ui.ballPosition）+ 拖动态 + 全屏/打印隐藏。
+   球的透明度由 ball.js 按settings.ui.ballOpacity（0-100，语义=不透明度百分比）
+   写入内联 style.opacity，此处不设默认 opacity（与 v0.1 行为一致）。 */
+
+/* ==================== 球本体 ==================== */
+
+.ta-float-ball {
+  position: fixed;
+  top: 50%;
+  margin-top: -16px;      /* 垂直居中（拖动后由内联 left/top 接管，margin 复位） */
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #5b7cfa, #3f5ce0);
+  color: #fff;
+  font: 700 14px/32px system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  text-align: center;
+  z-index: 2147483646;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  /* 分层柔和阴影 + 内高光，不用 filter/transform（避免为 fixed 子孙创建包含块） */
+  box-shadow: 0 3px 10px rgba(63, 92, 224, 0.35), 0 1px 3px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  touch-action: none;     /* 防移动端滚动干扰拖动 */
+}
+
+/* 默认位置：右缘（data-ta-ball-side="left" 时切左缘）；settings.ui.ballPosition 控制 */
+.ta-float-ball[data-ta-ball-side="right"] { right: 10px; left: auto; }
+.ta-float-ball[data-ta-ball-side="left"]  { left: 10px;  right: auto; }
+
+/* 悬停/按下：仅用背景渐变 + 阴影变化，绝不使用 filter/transform */
+.ta-float-ball:hover {
+  background: linear-gradient(145deg, #6d8bff, #4c6ae8);
+  box-shadow: 0 4px 16px rgba(63, 92, 224, 0.5), 0 2px 5px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.ta-float-ball:active {
+  background: linear-gradient(145deg, #3f5ce0, #3249c4);
+  box-shadow: 0 1px 4px rgba(63, 92, 224, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 已翻译态：安静的靛蓝/灰渐变显「原」；翻译中：进度光标 */
+.ta-float-ball[data-ta-state="on"] {
+  background: linear-gradient(145deg, #8f97a3, #6b7280);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.ta-float-ball[data-ta-state="busy"] { cursor: progress; }
+
+/* 菜单展开中的球：略亮的渐变 */
+.ta-float-ball.ta-menu-open {
+  background: linear-gradient(145deg, #6d8bff, #3f5ce0);
+  box-shadow: 0 3px 16px rgba(63, 92, 224, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* 拖动中：去过渡 + 抓手光标（无 filter） */
+.ta-float-ball.ta-dragging {
+  transition: none;
+  cursor: grabbing;
+  box-shadow: 0 5px 18px rgba(63, 92, 224, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ==================== 引导 tooltip（前 5 次悬停） ==================== */
+
+/* tip 是球的子节点：position:absolute 相对球定位，无需任何 JS 视口坐标计算 */
+.ta-ball-tip {
+  position: absolute;
+  top: 3px;                    /* 球高 32px / tip 约 26px，近似垂直居中 */
+  right: calc(100% + 8px);     /* 球右缘停靠 → tip 在球左侧 */
+  left: auto;
+  z-index: 2147483647;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(31, 35, 40, 0.92);
+  color: #fff;
+  font: 12px/1.4 system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ta-ball-tip.ta-tip-show { opacity: 1; transform: translateY(0); }
+/* 球左缘停靠 → tip 在球右侧 */
+.ta-float-ball[data-ta-ball-side="left"] .ta-ball-tip { right: auto; left: calc(100% + 8px); }
+
+/* ==================== 菜单面板 ==================== */
+
+/* 菜单是球的子节点：position:absolute 相对球本身定位（非视口坐标）。
+   右缘球 → 菜单在球左侧展开；左缘球 → 菜单在球右侧展开。
+   缩放动画的 transform-origin 随停靠侧切换，保证从球一侧弹出。 */
+.ta-ball-menu {
+  position: absolute;
+  top: -6px;
+  right: calc(100% + 10px);    /* 球右缘停靠 → 菜单在球左侧 */
+  left: auto;
+  z-index: 2147483646;
+  min-width: 172px;
+  max-height: min(62vh, 460px);
+  overflow: auto;
+  padding: 6px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f2328;
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  transform: scale(0.92);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ta-ball-menu.ta-menu-show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+/* 球在左缘时菜单向右弹出，动画原点相应切到左上 */
+.ta-float-ball[data-ta-ball-side="left"] .ta-ball-menu {
+  right: auto;
+  left: calc(100% + 10px);
+  transform-origin: top left;
+}
+
+/* 菜单项 */
+.ta-ball-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ta-ball-item:hover { background: rgba(79, 110, 242, 0.1); }
+.ta-ball-item:active { background: rgba(79, 110, 242, 0.18); }
+/* 子菜单行悬停高亮更明显，提示「悬停即可展开」 */
+.ta-ball-item[data-act="themes"]:hover,
+.ta-ball-item[data-act="export"]:hover { background: rgba(79, 110, 242, 0.16); }
+.ta-ball-item .ta-item-arrow { margin-left: auto; opacity: 0.45; font-size: 11px; }
+.ta-ball-item.ta-item-danger:hover { background: rgba(209, 36, 47, 0.1); }
+
+/* 分组分隔 */
+.ta-ball-sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.ta-ball-group-label {
+  padding: 4px 10px 2px;
+  font-size: 11px;
+  color: #8a9099;
+  user-select: none;
+}
+
+/* ==================== 二级子面板（主题选择 / 导出格式） ==================== */
+
+.ta-ball-sub { padding: 2px 0 6px; }
+
+/* 主题 24 档：3 列小按钮网格 */
+.ta-ball-themes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px 6px;
+}
+.ta-ball-theme-btn {
+  padding: 5px 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: 12px/1.3 inherit;
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ta-ball-theme-btn:hover { border-color: #4F6EF2; color: #4F6EF2; }
+.ta-ball-theme-btn.ta-theme-cur {
+  border-color: #4F6EF2;
+  background: rgba(79, 110, 242, 0.12);
+  color: #4F6EF2;
+  font-weight: 600;
+}
+
+/* 导出格式竖排按钮 */
+.ta-ball-sub .ta-ball-item { padding-left: 22px; }
+
+/* ==================== 暗色模式 ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .ta-ball-menu {
+    background: #26282e;
+    color: #e6e8eb;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+  .ta-ball-item:hover { background: rgba(112, 137, 255, 0.16); }
+  .ta-ball-sep { background: rgba(255, 255, 255, 0.1); }
+  .ta-ball-group-label { color: #8a9099; }
+  .ta-ball-theme-btn { border-color: rgba(255, 255, 255, 0.14); }
+  .ta-ball-theme-btn:hover,
+  .ta-ball-theme-btn.ta-theme-cur {
+    border-color: #7089ff;
+    color: #a0b3ff;
+  }
+  .ta-ball-theme-btn.ta-theme-cur { background: rgba(112, 137, 255, 0.18); }
+  .ta-ball-tip { background: rgba(230, 232, 235, 0.95); color: #15171a; }
+  .ta-float-ball { box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+}
+
+/* ==================== 打印 / 全屏隐藏 ====================
+   打印：CSS 媒体查询；全屏：ball.js 监听 fullscreenchange 加 [data-ta-fullscreen]。 */
+
+@media print {
+  .ta-float-ball,
+  .ta-ball-menu,
+  .ta-ball-tip { display: none !important; }
+}
+
+html:fullscreen .ta-float-ball[data-ta-fullscreen="hide"],
+:-webkit-full-screen .ta-float-ball[data-ta-fullscreen="hide"],
+.ta-float-ball[data-ta-fullscreen="hide"] { display: none !important; }

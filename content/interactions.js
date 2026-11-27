@@ -547,7 +547,7 @@
     selUI.trigger = el;
   }
 
-  // 气泡卡结构（v0.2 设计 threeInteractions 定稿骨架；静态模板，译文一律 textContent 回填）
+  // 气泡卡结构（v0.2 设计 threeInteractions 定稿骨架；静态模板，译文经 Markdown 渲染回填）
   function ensureBubble() {
     if (selUI.bubble && selUI.bubble.isConnected) return selUI.bubble;
     var b = document.createElement('div');
@@ -601,8 +601,16 @@
       ? showOriginalOverride : cfg.showOriginal;
     var body = selUI.bubble.querySelector('.ta-sel-body');
     if (!body) return;
+    // 译文经共享渲染器生成 HTML（Markdown + $...$/$$...$$ 公式）；
+    // markdown-it html:false 转义原始 HTML、KaTeX trust:false，保持旧 textContent 时代的 XSS 安全。
+    // 原文回显不是译文，继续走纯文本。
     body.innerHTML = '<div class="ta-sel-trans"></div><div class="ta-sel-orig ta-hide"></div>';
-    body.querySelector('.ta-sel-trans').textContent = t;
+    var transEl = body.querySelector('.ta-sel-trans');
+    if (TA.markdown && typeof TA.markdown.render === 'function') {
+      TA.markdown.renderInto ? TA.markdown.renderInto(transEl, t) : (transEl.innerHTML = TA.markdown.render(t));
+    } else {
+      transEl.textContent = t;   // 渲染基座缺席时降级为纯文本，绝不裸填 HTML
+    }
     var orig = body.querySelector('.ta-sel-orig');
     orig.textContent = selUI.current.raw.trim();
     if (selUI.current.isWord && showOrig) orig.classList.remove('ta-hide');

@@ -1,0 +1,286 @@
+/* styles/themes.css —— 译文主题系统全集 24 档（v0.2，C 全面还原实现员）
+   样式细节逐字落地自官方扩展 inject.css（deepSpec 侦察材料
+   .tmp-immersive-scout/immersive-translate.user.js 中 "inject.css" 段实测提取）：
+   变量名 --immersive-translate-theme-X → 本扩展 --ta-theme-X；类名映射：
+   官方 .immersive-translate-target-inner → .ta-target-inner（行内效果挂译文内层），
+   官方 .immersive-translate-target-translation-block-wrapper → .ta-target-wrapper（块级效果挂译文外壳）。
+   本文件在 manifest css 数组中排在 content.css 之后加载，同名主题选择器覆盖 v0.1
+   content.css 的旧 12 档定义（A 将在 content.css 中移除主题段，迁出后无重复）。
+
+   wrapper 结构（content/injector.js createWrapper）：
+     <span class="ta-target-wrapper" data-ta-theme="dashed" dir="auto">
+       <span class="ta-target-inner">…译文…</span>
+     </span>
+
+   --ta-c 通道：用户自定义颜色（options ② 区，injector.js applyInlineStyle 以内联
+   style 写在 wrapper 上）优先于官方默认色 —— 各主题边框/下划线色一律写成
+   var(--ta-c, var(--ta-theme-X-borderColor))。
+   全页开关（遮罩学习模式）：documentElement[data-ta-root-theme="mask"] 让所有译文
+   模糊（见文末）；悬浮球菜单与快捷键 toggle-mask 切换该属性。
+*/
+
+/* ==================== 官方 24 档 CSS 变量（inject.css :root 逐字映射） ==================== */
+
+:root {
+  --ta-theme-underline-borderColor: #72ece9;
+  --ta-theme-nativeUnderline-borderColor: #72ece9;
+  --ta-theme-nativeDashed-borderColor: #72ece9;
+  --ta-theme-nativeDotted-borderColor: #72ece9;
+  --ta-theme-highlight-backgroundColor: #ffff00;
+  --ta-theme-dashed-borderColor: #59c1bd;
+  --ta-theme-blockquote-borderColor: #cc3355;
+  --ta-theme-thinDashed-borderColor: #ff374f;
+  --ta-theme-dashedBorder-borderColor: #94a3b8;
+  --ta-theme-dashedBorder-borderRadius: 0;
+  --ta-theme-solidBorder-borderColor: #94a3b8;
+  --ta-theme-solidBorder-borderRadius: 0;
+  --ta-theme-dotted-borderColor: #94a3b8;
+  --ta-theme-wavy-borderColor: #72ece9;
+  --ta-theme-dividingLine-borderColor: #94a3b8;
+  --ta-theme-grey-textColor: #2f4f4f;
+  --ta-theme-marker-backgroundColor: #fbda41;
+  --ta-theme-marker-backgroundColor-rgb: 251, 218, 65;
+  --ta-theme-marker2-backgroundColor: #ffff00;
+  --ta-theme-background-backgroundColor: #dbafaf;
+  --ta-theme-background-backgroundColor-rgb: 219, 175, 175;
+  --ta-theme-background-backgroundOpacity: 12;
+  --ta-theme-opacity-opacity: 10;
+}
+
+/* ==================== 01 none 无（无任何附加样式） ==================== */
+
+/* ==================== 02 grey 黑灰 ==================== */
+
+.ta-target-wrapper[data-ta-theme="grey"] > .ta-target-inner {
+  color: var(--ta-c, var(--ta-theme-grey-textColor));
+}
+
+/* ==================== 03 dashed 虚线下划线（默认档：官方 #59c1bd 渐变虚线） ==================== */
+
+.ta-target-wrapper[data-ta-theme="dashed"] > .ta-target-inner {
+  background: linear-gradient(
+      to right,
+      var(--ta-c, var(--ta-theme-dashed-borderColor)) 0%,
+      var(--ta-c, var(--ta-theme-dashed-borderColor)) 50%,
+      transparent 50%,
+      transparent 100%
+    )
+    repeat-x left bottom;
+  background-size: 8px 2px;
+  padding-bottom: 2px;
+}
+
+/* ==================== 04 thinDashed 细虚线 ==================== */
+
+.ta-target-wrapper[data-ta-theme="thinDashed"] > .ta-target-inner {
+  border-bottom: 1px dashed var(--ta-c, var(--ta-theme-thinDashed-borderColor)) !important;
+}
+
+/* ==================== 05 dotted 点状（官方 background-image 点线） ==================== */
+
+.ta-target-wrapper[data-ta-theme="dotted"] > .ta-target-inner {
+  background-image: linear-gradient(
+    to right,
+    var(--ta-c, var(--ta-theme-dotted-borderColor)) 30%,
+    rgba(255, 255, 255, 0) 0%
+  );
+  background-position: bottom;
+  background-size: 5px 1px;
+  background-repeat: repeat-x;
+  padding-bottom: 3px;
+}
+
+/* ==================== 06 underline 直线 ==================== */
+
+.ta-target-wrapper[data-ta-theme="underline"] > .ta-target-inner {
+  border-bottom: 1px solid var(--ta-c, var(--ta-theme-underline-borderColor)) !important;
+}
+
+/* ==================== 07-09 nativeUnderline / nativeDashed / nativeDotted（原生 text-decoration） ==================== */
+
+.ta-target-wrapper[data-ta-theme="nativeUnderline"] > .ta-target-inner,
+.ta-target-wrapper[data-ta-theme="nativeDashed"] > .ta-target-inner,
+.ta-target-wrapper[data-ta-theme="nativeDotted"] > .ta-target-inner {
+  text-decoration: underline !important;
+  text-decoration-color: var(--ta-c, var(--ta-theme-nativeUnderline-borderColor)) !important;
+}
+.ta-target-wrapper[data-ta-theme="nativeDashed"] > .ta-target-inner {
+  text-decoration-style: dashed !important;
+}
+.ta-target-wrapper[data-ta-theme="nativeDotted"] > .ta-target-inner {
+  text-decoration-style: dotted !important;
+}
+
+/* ==================== 10 wavy 波浪 ==================== */
+
+.ta-target-wrapper[data-ta-theme="wavy"] > .ta-target-inner {
+  text-decoration: underline !important;
+  text-decoration-color: var(--ta-c, var(--ta-theme-wavy-borderColor)) !important;
+  text-decoration-style: wavy !important;
+}
+
+/* ==================== 11 dashedBorder 虚线边框（块级，挂 wrapper） ==================== */
+
+.ta-target-wrapper[data-ta-theme="dashedBorder"] {
+  border: 1px dashed var(--ta-c, var(--ta-theme-dashedBorder-borderColor)) !important;
+  border-radius: var(--ta-theme-dashedBorder-borderRadius) !important;
+  padding: 6px;
+}
+
+/* ==================== 12 solidBorder 实线边框（块级） ==================== */
+
+.ta-target-wrapper[data-ta-theme="solidBorder"] {
+  border: 1px solid var(--ta-c, var(--ta-theme-solidBorder-borderColor)) !important;
+  border-radius: var(--ta-theme-solidBorder-borderRadius) !important;
+  padding: 6px;
+}
+
+/* ==================== 13 dividingLine 分割线（块级 ::before 短横线，官方逐字） ==================== */
+
+.ta-target-wrapper[data-ta-theme="dividingLine"]::before {
+  content: "";
+  display: block;
+  max-width: 80px;
+  width: 10%;
+  border-top: 1px dashed var(--ta-c, var(--ta-theme-dividingLine-borderColor));
+  padding-top: 8px;
+}
+
+/* ==================== 14 highlight 高亮 ==================== */
+
+.ta-target-wrapper[data-ta-theme="highlight"] > .ta-target-inner {
+  background: var(--ta-theme-highlight-backgroundColor);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ==================== 15 marker 马克笔（官方渐变荧光） ==================== */
+
+.ta-target-wrapper[data-ta-theme="marker"] {
+  line-height: 1.5em;
+}
+.ta-target-wrapper[data-ta-theme="marker"] > .ta-target-inner {
+  background: linear-gradient(
+    to right,
+    rgba(var(--ta-theme-marker-backgroundColor-rgb), 0.1),
+    rgba(var(--ta-theme-marker-backgroundColor-rgb), 0.9) 3%,
+    rgba(var(--ta-theme-marker-backgroundColor-rgb), 0.9) 35%,
+    rgba(var(--ta-theme-marker-backgroundColor-rgb), 0.9) 70%,
+    rgba(var(--ta-theme-marker-backgroundColor-rgb), 0.8) 95%,
+    rgba(var(--ta-theme-marker-backgroundColor-rgb), 0.3)
+  );
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ==================== 16 marker2 马克笔2（加粗 + 右侧荧光投影，官方逐字） ==================== */
+
+.ta-target-wrapper[data-ta-theme="marker2"] > .ta-target-inner {
+  font-weight: bold;
+  text-shadow: 10px 0px 3px var(--ta-theme-marker2-backgroundColor);
+}
+
+/* ==================== 17 background 背景色（官方 rgba 12% 通道） ==================== */
+
+.ta-target-wrapper[data-ta-theme="background"] > .ta-target-inner {
+  background: rgba(
+    var(--ta-theme-background-backgroundColor-rgb),
+    calc(var(--ta-theme-background-backgroundOpacity) * 1%)
+  );
+  padding-left: 6px;
+  padding-right: 6px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ==================== 18 opacity 透明（hover 恢复清晰，官方同款交互） ==================== */
+
+.ta-target-wrapper[data-ta-theme="opacity"] > .ta-target-inner {
+  filter: opacity(calc(var(--ta-theme-opacity-opacity) * 1%)) !important;
+  transition: filter 0.3s ease !important;
+  border-radius: 10px;
+  display: inline-block;
+}
+.ta-target-wrapper[data-ta-theme="opacity"] > .ta-target-inner:hover {
+  filter: none !important;
+}
+
+/* ==================== 19 mask 模糊（学习模式主题档：模糊译文、悬停显示） ==================== */
+
+.ta-target-wrapper[data-ta-theme="mask"] > .ta-target-inner {
+  filter: blur(5px) !important;
+  transition: filter 0.3s ease !important;
+  border-radius: 10px;
+  display: inline-block;
+}
+.ta-target-wrapper[data-ta-theme="mask"] > .ta-target-inner:hover {
+  filter: none !important;
+}
+
+/* ==================== 20 paper 白纸阴影（块级） ==================== */
+
+.ta-target-wrapper[data-ta-theme="paper"] {
+  margin: 8px 0;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  padding: 16px 32px;
+}
+
+/* ==================== 21 blockquote 引用（块级左竖线，官方 #cc3355） ==================== */
+
+.ta-target-wrapper[data-ta-theme="blockquote"] {
+  border-left: 4px solid var(--ta-c, var(--ta-theme-blockquote-borderColor)) !important;
+  padding-left: 12px !important;
+}
+
+/* ==================== 22 weakening 弱化 ==================== */
+
+.ta-target-wrapper[data-ta-theme="weakening"] > .ta-target-inner {
+  opacity: 0.618 !important;
+}
+
+/* ==================== 23 italic 斜体 ==================== */
+
+.ta-target-wrapper[data-ta-theme="italic"] > .ta-target-inner {
+  font-style: italic !important;
+}
+
+/* ==================== 24 bold 加粗 ==================== */
+
+.ta-target-wrapper[data-ta-theme="bold"] > .ta-target-inner {
+  font-weight: bold !important;
+}
+
+/* ==================== 遮罩学习模式 · 全页开关（快捷键 toggle-mask / 悬浮球菜单） ====================
+   documentElement 挂 data-ta-root-theme="mask" 时，全页所有译文统一模糊，
+   悬停单条译文临时清晰；移除属性即全页还原。与 19 档 mask 主题独立使用、互不影响。 */
+
+[data-ta-root-theme="mask"] .ta-target-inner {
+  filter: blur(5px) !important;
+  transition: filter 0.3s ease !important;
+  border-radius: 10px;
+  display: inline-block;
+}
+[data-ta-root-theme="mask"] .ta-target-inner:hover {
+  filter: none !important;
+}
+
+/* ==================== 暗色模式适配 ==================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 高亮/荧光在暗底上降亮度，避免刺眼；低饱和边框色保持官方默认 */
+    --ta-theme-highlight-backgroundColor: #b29600;
+    --ta-theme-marker2-backgroundColor: #8f8f00;
+    --ta-theme-grey-textColor: #9aa4ad;
+    --ta-theme-background-backgroundColor-rgb: 120, 100, 100;
+  }
+  [data-ta-root-theme="mask"] .ta-target-inner,
+  .ta-target-wrapper[data-ta-theme="mask"] > .ta-target-inner {
+    /* 暗色下模糊译文保留最低可辨识轮廓 */
+    filter: blur(5px) brightness(0.85) !important;
+  }
+  [data-ta-root-theme="mask"] .ta-target-inner:hover,
+  .ta-target-wrapper[data-ta-theme="mask"] > .ta-target-inner:hover {
+    filter: none !important;
+  }
+}

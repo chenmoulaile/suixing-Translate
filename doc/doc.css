@@ -299,6 +299,102 @@ body {
 .results[data-style="translation"] .card-timing { display: none; }
 .results[data-style="original"] .segment-translation { display: none; }
 
+/* ---------- PDF 分页对照 / 仅译文（保排版） ---------- */
+.pdf-pages { display: flex; flex-direction: column; gap: 22px; }
+.pdf-segment-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* 段式三态：显示段列表，隐藏分页视图 */
+.results[data-style="bilingual"] .pdf-pages,
+.results[data-style="translation"] .pdf-pages,
+.results[data-style="original"] .pdf-pages { display: none; }
+/* PDF 分页两态：显示分页视图，隐藏段列表 */
+.results[data-style="page-compare"] .pdf-segment-list,
+.results[data-style="translation-page"] .pdf-segment-list { display: none; }
+
+.pdf-page-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+.pdf-page-label {
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+/* 左右双栏：原文页 + 译文页，各占一半 */
+.pdf-page-pair .pdf-page {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  width: 100%;
+  background: #fbfbfd;
+  border: 1px solid #d8dce6;
+  border-radius: 4px;
+  overflow: hidden;
+  /* 用 auto 行高由 aspect-ratio 内联样式驱动 */
+}
+@media (min-width: 861px) {
+  .results[data-style="page-compare"] .pdf-page-pair {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .results[data-style="page-compare"] .pdf-page-label {
+    position: absolute;
+    top: 18px;
+    left: 22px;
+  }
+}
+.pdf-block {
+  position: absolute;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 1.32;
+  color: #1a1a1a;
+  overflow: hidden;
+}
+.pdf-source .pdf-block { color: #5b6470; }
+.pdf-target .pdf-block { color: #111; }
+
+/* 仅译文（保排版）：隐藏原文层，译文层居中铺满，坐标绝对定位不变 */
+.results[data-style="translation-page"] .pdf-source { display: none; }
+.results[data-style="translation-page"] .pdf-page-pair {
+  flex-direction: row;
+  justify-content: center;
+}
+.results[data-style="translation-page"] .pdf-layer.pdf-target,
+.results[data-style="translation-page"] .pdf-target {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* 公式 / Markdown 渲染块 */
+.formula-slot { color: var(--text); }
+.formula-inline { display: inline; }
+.formula-display { display: block; margin: 6px 0; }
+code.pdf-formula, code.ta-math-fallback {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: rgba(109, 140, 255, .1);
+  border: 1px solid rgba(109, 140, 255, .25);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: .95em;
+}
+/* KaTeX 在深色卡片中默认黑色公式，给一层浅底保证可读 */
+.katex { color: #1a1a1a; }
+.pdf-page .katex { color: #111; }
+.segment-original .katex, .segment-translation .katex { color: #e7e9f0; }
+/* 段内 Markdown 基础排版 */
+.segment-text p { margin: 0 0 .4em; }
+.segment-text a { color: var(--accent); }
+
 .foot { margin-top: 34px; text-align: center; color: var(--faint); font-size: 11px; }
 
 @media (max-width: 620px) {

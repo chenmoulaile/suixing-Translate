@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>随行翻译 · 文档翻译</title>
   <link rel="stylesheet" href="doc.css">
+  <link rel="stylesheet" href="../vendor/katex.min.css">
 </head>
 <body>
   <!-- 顶栏 -->
@@ -68,7 +69,9 @@
           <span id="resultMeta" class="result-meta"></span>
         </div>
         <div class="style-toggle" role="group" aria-label="显示样式">
-          <button type="button" class="seg active" data-style="bilingual">双语对照</button>
+          <button type="button" class="seg active" data-style="page-compare">分页对照</button>
+          <button type="button" class="seg" data-style="translation-page">仅译文（保排版）</button>
+          <button type="button" class="seg" data-style="bilingual">双语对照</button>
           <button type="button" class="seg" data-style="translation">仅译文</button>
           <button type="button" class="seg" data-style="original">仅原文</button>
         </div>
@@ -79,6 +82,7 @@
         <button type="button" class="btn" data-export="md">双语 Markdown</button>
         <button type="button" class="btn" data-export="txt">双语 TXT</button>
         <button type="button" class="btn" data-export="html">双语 HTML</button>
+        <button type="button" class="btn pdf-only" data-export="translation-html" hidden>仅译文 HTML</button>
         <button type="button" class="btn" data-export="translated-txt">仅译文 TXT</button>
         <button type="button" class="btn subtitle-only" data-export="srt" hidden>双语 SRT</button>
         <button type="button" class="btn subtitle-only" data-export="translated-srt" hidden>仅译文 SRT</button>
@@ -92,7 +96,11 @@
 
   <!-- defaults 提供 TA.TARGET_LANGS / TA.mergeDefaults；guard：缺失仍可工作 -->
   <script src="../shared/defaults.js"></script>
+  <script src="../vendor/markdown-it.min.js"></script>
+  <script src="../vendor/katex.min.js"></script>
+  <script src="../shared/markdown.js"></script>
   <script src="vendor/pdf.min.js"></script>
+  <script src="pdf-formula.js"></script>
   <script src="doc.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-/* styles/themes.css —— 译文主题系统全集 24 档（v0.2，C 全面还原实现员）
+/* styles/themes.css —— 译文主题系统全集 26 档（v0.2，C 全面还原实现员）
    样式细节逐字落地自官方扩展 inject.css（deepSpec 侦察材料
    .tmp-immersive-scout/immersive-translate.user.js 中 "inject.css" 段实测提取）：
    变量名 --immersive-translate-theme-X → 本扩展 --ta-theme-X；类名映射：
@@ -45,6 +45,8 @@
   --ta-theme-background-backgroundColor-rgb: 219, 175, 175;
   --ta-theme-background-backgroundOpacity: 12;
   --ta-theme-opacity-opacity: 10;
+  --ta-theme-doubleUnderline-borderColor: #72ece9;
+  --ta-theme-pill-borderColor: #94a3b8;
 }
 
 /* ==================== 01 none 无（无任何附加样式） ==================== */
@@ -249,6 +251,28 @@
 .ta-target-wrapper[data-ta-theme="bold"] > .ta-target-inner {
   font-weight: bold !important;
 }
+
+/* ==================== 25 doubleUnderline 双下划线（行内：青色双实线） ==================== */
+
+.ta-target-wrapper[data-ta-theme="doubleUnderline"] > .ta-target-inner {
+  text-decoration: underline double !important;
+  text-decoration-color: var(--ta-c, var(--ta-theme-doubleUnderline-borderColor)) !important;
+}
+
+/* ==================== 26 pill 胶囊描边（行内：圆角描边包裹感） ==================== */
+
+.ta-target-wrapper[data-ta-theme="pill"] > .ta-target-inner {
+  border: 1px solid var(--ta-c, var(--ta-theme-pill-borderColor)) !important;
+  border-radius: 999px;
+  padding: 1px 8px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ==================== 选项网格简预览（options.html 在 options.css 之后加载本文件） ==================== */
+
+.tp[data-theme="doubleUnderline"] { text-decoration: underline double #72ece9; }
+.tp[data-theme="pill"] { border: 1px solid #94a3b8; border-radius: 999px; padding: 0 8px; }
 
 /* ==================== 遮罩学习模式 · 全页开关（快捷键 toggle-mask / 悬浮球菜单） ====================
    documentElement 挂 data-ta-root-theme="mask" 时，全页所有译文统一模糊，

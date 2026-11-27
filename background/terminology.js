@@ -59,8 +59,91 @@
       cache: '缓存', thread: '线程', buffer: '缓冲区', kernel: '内核',
       latency: '延迟', bandwidth: '带宽', compiler: '编译器', protocol: '协议',
       deploy: '部署', algorithm: '算法'
+    },
+    // 算法竞赛 / OI：英文与日文竞赛术语并列，面向中文输出。歧义项按竞赛语境消解：
+    // DP=动态规划（非"分区"），mod=取模（非"模块"），table=表，weight=权值，state=状态。
+    oi: {
+      // —— 动态规划 ——
+      'dynamic programming': '动态规划', DP: '动态规划', 'state transition': '状态转移',
+      transition: '转移', state: '状态', 'recurrence relation': '递推式',
+      memoization: '记忆化搜索', knapsack: '背包', 'bitmask DP': '状压 DP',
+      'interval DP': '区间 DP', 'tree DP': '树形 DP', 'digit DP': '数位 DP',
+      'DP table': 'DP 表',
+      // —— 多项式 / 变换 ——
+      convolution: '卷积', convolve: '卷积', 'number theoretic transform': '数论变换',
+      NTT: '数论变换', 'fast Fourier transform': '快速傅里叶变换', FFT: '快速傅里叶变换',
+      'generating function': '生成函数',
+      // —— 数论 / 模运算 ——
+      'modular arithmetic': '模运算', modulo: '取模', mod: '取模',
+      'modular inverse': '模逆元', 'inverse element': '逆元', inverse: '逆元',
+      'modulo operation': '取模运算', 'prime factorization': '质因数分解',
+      'sieve of Eratosthenes': '埃氏筛', 'Eulers totient': '欧拉函数',
+      'greatest common divisor': '最大公约数', GCD: '最大公约数',
+      'least common multiple': '最小公倍数', LCM: '最小公倍数',
+      'extended Euclidean algorithm': '扩展欧几里得算法', extgcd: '扩展欧几里得',
+      'Chinese remainder theorem': '中国剩余定理', CRT: '中国剩余定理',
+      'Fermats little theorem': '费马小定理', 'primitive root': '原根',
+      // —— 代数结构 ——
+      monoid: '幺半群', semigroup: '半群', identity: '单位元', associative: '结合律',
+      // —— 数据结构 ——
+      'segment tree': '线段树', 'lazy propagation': '懒标记',
+      'persistent segment tree': '可持久化线段树', 'Fenwick tree': '树状数组',
+      'Binary Indexed Tree': '树状数组', BIT: '树状数组', 'sparse table': '稀疏表',
+      'disjoint set union': '并查集', DSU: '并查集', 'union-find': '并查集',
+      'priority queue': '优先队列', 'monotonic stack': '单调栈',
+      'monotonic queue': '单调队列', 'sliding window': '滑动窗口',
+      'two pointers': '双指针', 'prefix sum': '前缀和', 'imos method': '差分数组',
+      'coordinate compression': '离散化', 'square root decomposition': '分块',
+      trie: '字典树', 'suffix array': '后缀数组', 'suffix automaton': '后缀自动机',
+      'rolling hash': '滚动哈希', 'Cartesian tree': '笛卡尔树',
+      'half-open interval': '半开区间', 'half-open': '左闭右开',
+      tree: '树', edge: '边', vertex: '顶点', node: '节点', weight: '权值',
+      subtree: '子树', heap: '堆', table: '表', 'lookup table': '查找表',
+      // —— 图论 / 搜索 ——
+      'binary search': '二分查找', 'binary lifting': '倍增', doubling: '倍增',
+      'lowest common ancestor': '最近公共祖先', LCA: '最近公共祖先',
+      'heavy-light decomposition': '树链剖分', HLD: '树链剖分',
+      'centroid decomposition': '点分治', 'breadth-first search': '广度优先搜索',
+      BFS: '广度优先搜索', 'depth-first search': '深度优先搜索', DFS: '深度优先搜索',
+      'shortest path': '最短路', 'minimum spanning tree': '最小生成树', MST: '最小生成树',
+      'topological sort': '拓扑排序', 'strongly connected component': '强连通分量',
+      SCC: '强连通分量', 'connected component': '连通分量', 'maximum flow': '最大流',
+      'min-cost flow': '最小费用流', 'bipartite matching': '二分图匹配', cycle: '环',
+      'matrix exponentiation': '矩阵快速幂', 'fast exponentiation': '快速幂',
+      'binary exponentiation': '快速幂',
+      // —— 组合数学 / 概率 ——
+      'expected value': '期望值', expectation: '期望', 'random variable': '随机变量',
+      variance: '方差', probability: '概率', combination: '组合数',
+      'binomial coefficient': '二项式系数', permutation: '排列', factorial: '阶乘',
+      'inclusion-exclusion': '容斥原理', 'Mobius inversion': '莫比乌斯反演',
+      'Catalan number': '卡特兰数',
+      // —— 复杂度 / 算法范式 ——
+      'time complexity': '时间复杂度', 'space complexity': '空间复杂度',
+      amortized: '摊还', greedy: '贪心', 'brute force': '暴力枚举',
+      backtracking: '回溯', 'divide and conquer': '分治', 'offline queries': '离线询问',
+      median: '中位数', bitmask: '位掩码',
+      // —— 日文竞赛术语（AtCoder 原文）——
+      '動的計画法': '动态规划', '線分木': '线段树', '累積和': '前缀和',
+      'ビット木': '树状数组', 'Union-Find': '并查集', '最短経路': '最短路',
+      '最小全域木': '最小生成树', '強連結成分': '强连通分量',
+      '連結成分': '连通分量', '二分探索': '二分查找', '期待値': '期望值',
+      '確率': '概率', '畳み込み': '卷积', '逆元': '逆元', '組合せ': '组合数',
+      '階乗': '阶乘', '素因数分解': '质因数分解', '中国の剰余定理': '中国剩余定理',
+      '計算量': '复杂度', '全探索': '暴力枚举', '場合分け': '分类讨论',
+      '区間': '区间', '半開区間': '半开区间', '競技プログラミング': '算法竞赛',
+      'アルゴリズム': '算法', 'データ構造': '数据结构'
     }
   };
+
+  // 算法竞赛语境的额外翻译约束，仅当 termsPreset === 'oi' 时追加到术语段。
+  // 与 AtCoder Better 的翻译规则对齐：只输出译文、保留排版、代码/变量/公式/占位符不动。
+  var CONTEST_RULES =
+    'Competitive-programming rules: output ONLY the translation with no explanations or notes; ' +
+    'maintain all original formatting, line breaks and numbering; ' +
+    'keep code snippets, variable names, function names and identifiers untranslated; ' +
+    'keep LaTeX equations, formulas and mathematical symbols unchanged, otherwise keep brackets [], HTML tags and their content unchanged; ' +
+    'preserve every 8-digit numeric placeholder (e.g. 【12345678】, [12345678], {12345678}) unchanged and exactly once - sentence-internal placeholders may move with target word order while paragraph-leading placeholders keep their paragraph order; ' +
+    'ensure natural target-language expression.';
 
   // 解析 CSV：每行 "source,target"（兼容中英文逗号与制表符），跳过空行 / # 注释行；
   // 取前两段并 trim，source 或 target 为空则跳过。
@@ -95,7 +178,9 @@
     var keys = Object.keys(merged);
     if (!keys.length) return '';
     var pairs = keys.map(function (k) { return k + '=>' + merged[k]; });
-    return 'Use these terminology translations consistently (source => target): ' + pairs.join('; ');
+    var section = 'Use these terminology translations consistently (source => target): ' + pairs.join('; ');
+    if (ai.termsPreset === 'oi') section += '\n' + CONTEST_RULES;
+    return section;
   }
 
   TA.terminology = {

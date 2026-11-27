@@ -1,12 +1,12 @@
 {
-  "passed": 13,
+  "passed": 16,
   "failed": 0,
   "results": [
     {
       "name": "1. 后台 12 适配器 + 术语库 + 新默认键就绪",
       "passed": true,
       "evidence": [
-        "{\"ids\":[\"deepl-free\",\"deepl-api\",\"google\",\"youdao\",\"iflyrec\",\"caiyun\",\"edge\",\"openai\",\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"hasNewServices\":true,\"defaultsKeys\":[\"ai\",\"subtitle\",\"dictionary\",\"imageTranslate\"],\"layout\":\"block\",\"serviceKeys\":[\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"presets\":[\"legal\",\"medical\",\"ecommerce\",\"education\",\"gaming\",\"novel\",\"finance\",\"tech\"],\"hasTerms\":true}"
+        "{\"ids\":[\"deepl-free\",\"deepl-api\",\"google\",\"youdao\",\"iflyrec\",\"caiyun\",\"edge\",\"openai\",\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"hasNewServices\":true,\"defaultsKeys\":[\"ai\",\"subtitle\",\"dictionary\",\"imageTranslate\"],\"layout\":\"block\",\"serviceKeys\":[\"claude\",\"gemini\",\"deepseek\",\"ollama\"],\"presets\":[\"legal\",\"medical\",\"ecommerce\",\"education\",\"gaming\",\"novel\",\"finance\",\"tech\",\"oi\"],\"hasTerms\":true}"
       ]
     },
     {
@@ -75,7 +75,7 @@
       "evidence": [
         "BALL_OPEN_SIDEBAR={\"ok\":true}",
         "controls=true",
-        "result=\"你好，今天过得怎么样？\\n自动检测 → 简体中文\\n复制译文\""
+        "result=\"你好，今天过得怎么样？\\n\\n自动检测 → 简体中文\\n复制译文\""
       ]
     },
     {
@@ -97,7 +97,29 @@
       "name": "13. PDF 解析回归：文本型 PDF 能提取段落（修复 l-is-not-defined）",
       "passed": true,
       "evidence": [
-        "{\"ok\":true,\"kind\":\"text\",\"segs\":1,\"sample\":\"The Quick Brown Fox\\nHello world, this is a PDF regression test.\\nProgramming cont\"}"
+        "{\"ok\":true,\"kind\":\"pdf\",\"segs\":1,\"sample\":\"The Quick Brown Fox\\nHello world, this is a PDF regression test.\\nProgramming cont\",\"pages\":[{\"no\":1,\"w\":595,\"h\":842,\"blocks\":1}],\"metas\":[{\"pg\":1,\"x\":50,\"y\":82,\"w\":256.76,\"h\":50}]}"
+      ]
+    },
+    {
+      "name": "13a. PDF 几何保留：kind=pdf / 页宽高有效 / 段坐标非负",
+      "passed": true,
+      "evidence": [
+        "pages=[{\"no\":1,\"w\":595,\"h\":842,\"blocks\":1}]",
+        "metas=[{\"pg\":1,\"x\":50,\"y\":82,\"w\":256.76,\"h\":50}]"
+      ]
+    },
+    {
+      "name": "13b. 分页对照：原文/译文双层节点 + 绝对定位坐标",
+      "passed": true,
+      "evidence": [
+        "{\"ok\":true,\"src\":1,\"tgt\":1,\"positioned\":true,\"styleAttr\":\"pdf-page-pair\"}"
+      ]
+    },
+    {
+      "name": "13c. 公式占位：送 MT 串无 TeX / 译文 token 零残留 / 公式节点可渲染",
+      "passed": true,
+      "evidence": [
+        "{\"ok\":true,\"masked\":\"设 ⟪m0⟫ 为质能方程\",\"slots\":1,\"restored\":\"设 $E=mc^2$ 为质能方程\",\"noTexInMasked\":true,\"noTokenAfterRestore\":true,\"katexNode\":true}"
       ]
     }
   ]

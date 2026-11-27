@@ -335,12 +335,65 @@ async function main() {
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         try {
           const r = await TA.doc.parsePdfBuffer(arr.buffer);
-          return { ok: true, kind: r.kind, segs: r.segments.length, sample: (r.segments[0] || '').slice(0, 80) };
+          return {
+            ok: true, kind: r.kind, segs: r.segments.length, sample: (r.segments[0] || '').slice(0, 80),
+            // 几何/分页：页宽高 + 每段坐标
+            pages: (r.pdfPages || []).map((p) => ({ no: p.pageNo, w: p.width, h: p.height, blocks: (p.blocks || []).length })),
+            metas: (r.segMeta || []).slice(0, 3).map((m) => ({ pg: m.pageNo, x: m.x, y: m.y, w: m.width, h: m.height }))
+          };
         } catch (e) { return { ok: false, err: String((e && e.message) || e) }; }
       }, b64);
       record('13. PDF 解析回归：文本型 PDF 能提取段落（修复 l-is-not-defined）',
         parsed.ok && parsed.segs > 0 && /Quick Brown Fox/i.test(parsed.sample),
         [JSON.stringify(parsed)]);
+
+      // 13a. 几何与分页：kind='pdf'、页尺寸有效、段坐标非负且落在页面内
+      const geomOK = parsed.ok && parsed.kind === 'pdf' && parsed.pages.length > 0 &&
+        parsed.pages.every((p) => p.w > 0 && p.h > 0) &&
+        parsed.metas.length > 0 && parsed.metas.every((m) => m.x >= 0 && m.y >= 0 && m.w > 0 && m.h > 0);
+      record('13a. PDF 几何保留：kind=pdf / 页宽高有效 / 段坐标非负', geomOK,
+        ['pages=' + JSON.stringify(parsed.pages), 'metas=' + JSON.stringify(parsed.metas)]);
+
+      // 13b. 分页对照 DOM + 仅译文 DOM：切换样式后两层节点存在且坐标 style 已写入
+      const views = await dpage.evaluate(async (b) => {
+        const bin = atob(b), arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        const r = await TA.doc.parsePdfBuffer(arr.buffer);
+        // 直接调渲染入口并显式传入解析数据，验证分页双层节点与坐标
+        const page = r.pdfPages[0];
+        const node = TA.doc.buildPdfPagePair ? TA.doc.buildPdfPagePair(page, {
+          segments: r.segments, translations: r.segments.slice(), segMeta: r.segMeta
+        }) : null;
+        if (!node) return { ok: false, err: 'buildPdfPagePair 未暴露' };
+        const src = node.querySelectorAll('.pdf-source .pdf-block');
+        const tgt = node.querySelectorAll('.pdf-target .pdf-block');
+        const positioned = [...src].every((n) => /%/.test(n.style.left) && /%/.test(n.style.top));
+        return { ok: true, src: src.length, tgt: tgt.length, positioned, styleAttr: node.className };
+      }, b64);
+      record('13b. 分页对照：原文/译文双层节点 + 绝对定位坐标',
+        views.ok && views.src > 0 && views.tgt === views.src && views.positioned,
+        [JSON.stringify(views)]);
+
+      // 13c. 公式占位：mask 后无 TeX 泄漏，unmask 后 token 零残留，KaTeX 节点存在
+      const formula = await dpage.evaluate(() => {
+        const F = globalThis.TA.pdfFormula;
+        if (!F) return { ok: false, err: 'TA.pdfFormula 未加载' };
+        const src = '设 $E=mc^2$ 为质能方程';
+        const m = F.maskFormulas(src);
+        const masked = m.masked;
+        const restored = F.unmaskFormulas(masked, m.slots);
+        const html = F.renderFormulaHTML(m.slots[0] ? m.slots[0].tex : '', false);
+        return {
+          ok: true, masked, slots: m.slots.length, restored,
+          noTexInMasked: !/[=^]/.test(masked),
+          noTokenAfterRestore: !/⟪m\d+⟫/.test(restored),
+          katexNode: /katex/.test(html)
+        };
+      });
+      record('13c. 公式占位：送 MT 串无 TeX / 译文 token 零残留 / 公式节点可渲染',
+        formula.ok && formula.noTexInMasked && formula.noTokenAfterRestore &&
+        formula.katexNode && formula.restored.indexOf('E=mc^2') >= 0,
+        [JSON.stringify(formula)]);
       await dpage.close();
     } catch (e) {
       record('13. PDF 解析回归：文本型 PDF 能提取段落（修复 l-is-not-defined）', false,

@@ -42,25 +42,28 @@
   var RETRY_BACKOFF_MS = [150, 350]; // 第 1/2 次重试前的等待
   var REQ_TIMEOUT_MS = 45000;        // 单次 sendMessage 超时：保证 Promise 必定 settle
   var CONN_ERR_RE = /Could not establish connection|Receiving end does not exist|message port closed/i;
-  // 主题 24 档与中文名 fallback（A 在 shared/defaults.js 交付 TA.THEMES/TA.THEME_NAMES 后自动切换）
+  // 主题 26 档与中文名 fallback（A 在 shared/defaults.js 交付 TA.THEMES/TA.THEME_NAMES 后自动切换）
   var THEMES_FALLBACK = ['none', 'grey', 'dashed', 'thinDashed', 'dotted', 'underline',
     'nativeUnderline', 'nativeDashed', 'nativeDotted', 'wavy', 'dashedBorder', 'solidBorder',
     'dividingLine', 'highlight', 'marker', 'marker2', 'background', 'opacity', 'mask',
-    'paper', 'blockquote', 'weakening', 'italic', 'bold'];
+    'paper', 'blockquote', 'weakening', 'italic', 'bold', 'doubleUnderline', 'pill'];
   var THEME_NAMES_FALLBACK = {
     none: '无', grey: '黑灰', dashed: '虚线下划线', thinDashed: '细虚线', dotted: '点状',
     underline: '直线', nativeUnderline: '原生下划线', nativeDashed: '原生虚线',
     nativeDotted: '原生点线', wavy: '波浪', dashedBorder: '虚线边框', solidBorder: '实线边框',
     dividingLine: '分割线', highlight: '高亮', marker: '马克笔', marker2: '马克笔2',
     background: '背景色', opacity: '透明', mask: '模糊(学习)', paper: '白纸阴影',
-    blockquote: '引用', weakening: '弱化', italic: '斜体', bold: '加粗'
+    blockquote: '引用', weakening: '弱化', italic: '斜体', bold: '加粗',
+    doubleUnderline: '双下划线', pill: '胶囊描边'
   };
 
   var settings = null;        // 最近一次设置（getSettings / onSettingsChanged 回填）
-  var ball = null, menu = null, tip = null;
+  var ball = null, menu = null, tip = null, sub = null;
   var inited = false;
   var menuOpen = false;
   var pinned = false;         // 子面板展开时菜单不因 mouseleave 收起
+  var subKind = null;         // 子菜单当前类别 themes|export|null
+  var subHideTimer = 0, subLeaveTimer = 0; // 子菜单隐藏收尾 / 跨缝隙延迟关闭
   var hoverTimer = 0, leaveTimer = 0, tipTimer = 0, tipHideTimer = 0;
   var drag = null;            // {sx, sy, moved, left, top}
   var pageState = 'idle';     // 自推状态：idle | busy | on
@@ -141,6 +144,9 @@
       // 菜单/tooltip 回归为球的子节点：CSS 用 position:absolute 相对球定位，
       // 无需 JS 视口坐标计算，缩放/transform/滚动条都不会造成错位。
       el.appendChild(buildMenu());
+      // 子菜单是 menu 的兄弟、球的子节点：主菜单 overflow:auto 会裁剪子节点，
+      // 故旁弹面板必须独立于 menu；同时保留球层叠上下文与点击/拖动守卫的 contains 语义。
+      el.appendChild(buildSubMenu());
       el.appendChild(buildTip());
       (document.documentElement || document.body).appendChild(el);
       bindBallEvents(el);
@@ -186,16 +192,27 @@
     menu.appendChild(mkItem('打开设置', 'options'));
   }
 
-  // 二级子面板：主题 24 档 / 导出三格式
+  function buildSubMenu() {
+    sub = document.createElement('div');
+    sub.className = 'ta-ball-submenu';
+    sub.setAttribute('dir', 'auto');
+    sub.hidden = true;
+    // hover 跨 8px 缝隙时两边都不 hover，延迟关闭避免闪退
+    sub.addEventListener('mouseenter', function () { clearTimeout(subLeaveTimer); });
+    sub.addEventListener('mouseleave', scheduleSubLeave);
+    sub.addEventListener('click', onSubClick);
+    return sub;
+  }
+
+  // 二级子面板（独立节点）：主题 26 档 / 导出三格式。主菜单常驻，不再清空重建。
   function renderSub(kind) {
-    menu.textContent = '';
-    var back = mkItem('‹ 返回', '_back');
-    menu.appendChild(back);
+    if (!sub) return;
+    sub.textContent = '';
     if (kind === 'themes') {
       var label = document.createElement('div');
       label.className = 'ta-ball-group-label';
       label.textContent = '译文主题（本页即时生效）';
-      menu.appendChild(label);
+      sub.appendChild(label);
       var grid = document.createElement('div');
       grid.className = 'ta-ball-themes';
       var list = themes();
@@ -210,21 +227,21 @@
           grid.appendChild(b);
         })(list[i]);
       }
-      menu.appendChild(grid);
+      sub.appendChild(grid);
       // 子面板内也保留设置入口，保证「打开设置」在任意层级都可见/可达
-      menu.appendChild(sep());
-      menu.appendChild(mkItem('打开设置', 'options'));
+      sub.appendChild(sep());
+      sub.appendChild(mkItem('打开设置', 'options'));
     } else if (kind === 'export') {
       var label2 = document.createElement('div');
       label2.className = 'ta-ball-group-label';
       label2.textContent = '导出双语（原文 + 译文）';
-      menu.appendChild(label2);
-      menu.appendChild(mkItem('网页快照（HTML）', 'export:html'));
-      menu.appendChild(mkItem('Markdown（.md）', 'export:markdown'));
-      menu.appendChild(mkItem('纯文本（.txt）', 'export:txt'));
+      sub.appendChild(label2);
+      sub.appendChild(mkItem('网页快照（HTML）', 'export:html'));
+      sub.appendChild(mkItem('Markdown（.md）', 'export:markdown'));
+      sub.appendChild(mkItem('纯文本（.txt）', 'export:txt'));
       // 子面板内也保留设置入口，保证「打开设置」在任意层级都可见/可达
-      menu.appendChild(sep());
-      menu.appendChild(mkItem('打开设置', 'options'));
+      sub.appendChild(sep());
+      sub.appendChild(mkItem('打开设置', 'options'));
     }
   }
 
@@ -240,6 +257,11 @@
       a.textContent = arrow;
       b.appendChild(a);
     }
+    // 有子菜单的父项标注语义，aria-expanded 随开合更新
+    if (act === 'themes' || act === 'export') {
+      b.setAttribute('aria-haspopup', 'menu');
+      b.setAttribute('aria-expanded', 'false');
+    }
     return b;
   }
   function sep() {
@@ -252,6 +274,7 @@
 
   function openMenu(pin) {
     if (!menu) return;
+    closeSub(); // 防重开残留
     renderMenuMain();
     menu.hidden = false;
     // 定位完全交给 CSS：菜单是球的子节点，position:absolute 相对球解析（见 styles/ball.css），
@@ -267,6 +290,7 @@
 
   function closeMenu() {
     if (!menu || !menuOpen) return;
+    closeSub();
     menu.classList.remove('ta-menu-show');
     ball.classList.remove('ta-menu-open');
     menuOpen = false;
@@ -275,16 +299,106 @@
     setTimeout(function () { if (!menuOpen) menu.hidden = true; }, 180);
   }
 
+  // 在触发项旁弹出二级面板，并做视口边缘翻转/钳制。
+  // 同一 kind 再次点击同一父项则 toggle 关闭。
+  function openSub(kind, anchorBtn) {
+    if (!sub || !menuOpen) return;
+    var same = subKind === kind && !sub.hidden;
+    if (same) { closeSub(); return; }
+    clearTimeout(subHideTimer);
+    clearTimeout(subLeaveTimer);
+    if (typeof removeSubReposition === 'function') removeSubReposition();
+    if (subKind && subKind !== kind) setSubParentExpanded(subKind, false); // 切到另一父项时先收起旧项
+    subKind = kind;
+    renderSub(kind);
+    sub.hidden = false;
+    sub.classList.add('ta-sub-show');
+    // 父项展开态
+    setSubParentExpanded(kind, true);
+    void sub.offsetWidth; // 强制回流后再定位（见 openMenu 同款写法）
+    positionSub(anchorBtn);
+    // 滚动（含嵌套滚动）与 resize 时跟随重定位；拖动时关闭，避免边拖边追
+    window.addEventListener('scroll', positionSubOnScroll, true);
+    window.addEventListener('resize', positionSubOnResize);
+  }
+
+  function closeSub() {
+    if (!sub || sub.hidden) { subKind = null; return; }
+    clearTimeout(subLeaveTimer);
+    sub.classList.remove('ta-sub-show');
+    setSubParentExpanded(subKind, false);
+    subKind = null;
+    removeSubReposition();
+    subHideTimer = setTimeout(function () {
+      if (!sub || !sub.classList.contains('ta-sub-show')) sub.hidden = true;
+    }, 180);
+  }
+
+  function setSubParentExpanded(kind, on) {
+    if (!menu || !kind) return;
+    var btn = menu.querySelector('button[data-act="' + kind + '"]');
+    if (btn) btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+
+  function positionSubOnScroll() { positionSub(currentSubAnchor()); }
+  function positionSubOnResize() { positionSub(currentSubAnchor()); }
+  function removeSubReposition() {
+    window.removeEventListener('scroll', positionSubOnScroll, true);
+    window.removeEventListener('resize', positionSubOnResize);
+  }
+  function currentSubAnchor() {
+    if (!menu || !subKind) return null;
+    return menu.querySelector('button[data-act="' + subKind + '"]');
+  }
+
+  // 视口坐标定位：主菜单方向由球停靠侧决定，子菜单从触发项继续向外弹出，
+  // 越界则翻到触发项另一侧，两侧皆不足则钳制在视口内。
+  function positionSub(anchorBtn) {
+    if (!sub || sub.hidden || !anchorBtn) return;
+    try {
+      var a = anchorBtn.getBoundingClientRect();
+      var s = sub.getBoundingClientRect();
+      var vw = document.documentElement.clientWidth;
+      var vh = document.documentElement.clientHeight;
+      var M = 8, GAP = 8;
+      var side = (ball && ball.getAttribute('data-ta-ball-side') === 'left') ? 'left' : 'right';
+      var left;
+      if (side === 'right') {          // 右缘球：主菜单在球左侧，子菜单继续向左展开
+        left = a.left - s.width - GAP;
+        if (left < M) left = a.right + GAP;
+      } else {                         // 左缘球：主菜单在球右侧，子菜单继续向右展开
+        left = a.right + GAP;
+        if (left + s.width > vw - M) left = a.left - s.width - GAP;
+      }
+      left = clampNum(left, M, Math.max(M, vw - s.width - M));
+      var top = clampNum(a.top - 6, M, Math.max(M, vh - s.height - M));
+      sub.style.left = left + 'px';
+      sub.style.top = top + 'px';
+    } catch (e) { console.debug('[TA][ball]', 'positionSub 失败', e); }
+  }
+
+  // 父项与子菜单各留 300ms grace，斜向跨越 8px 缝隙时不闪退
+  function scheduleSubLeave() {
+    if (!subKind) return;
+    clearTimeout(subLeaveTimer);
+    subLeaveTimer = setTimeout(function () {
+      if (!subKind) return;
+      if ((sub && sub.matches(':hover')) || (menu && menu.matches(':hover'))) return;
+      closeSub();
+    }, 300);
+  }
+
   // 点击外部 / ESC 收起
   function onDocClick(e) {
     if (!menuOpen) return;
-    if (ball.contains(e.target) || menu.contains(e.target)) return;
+    if (ball.contains(e.target) || menu.contains(e.target) || (sub && sub.contains(e.target))) return;
     closeMenu();
   }
   function onKeydown(e) {
     if (e.key !== 'Escape') return;
     // 侧边栏优先响应 ESC（它盖在菜单之上）
     if (sideOpen) { closeSidebar(); e.stopPropagation(); return; }
+    if (subKind) { closeSub(); e.stopPropagation(); return; }
     if (menuOpen) { closeMenu(); e.stopPropagation(); }
   }
 
@@ -296,10 +410,8 @@
     e.stopPropagation();
     var act = btn.dataset.act;
     if (btn.disabled) return;
-    if (act === '_back') { renderMenuMain(); return; }
     if (act === 'sidebar') { openSidebar(); return; }
-    if (act === 'themes') { renderSub('themes'); return; }
-    if (act === 'export') { renderSub('export'); return; }
+    if (act === 'themes' || act === 'export') { openSub(act, btn); return; }
     if (act === 'toggle-page') { actTogglePage(); return; }
     if (act === 'toggle-mode') { actToggleMode(); return; }
     if (act === 'mask') { actToggleMask(); return; }
@@ -308,6 +420,17 @@
     if (act === 'layout') { actToggleLayout(); return; }
     if (act === 'options') { actOpenOptions(); return; }
     if (act && act.indexOf('export:') === 0) { actExport(act.slice(7)); return; }
+  }
+
+  // 子菜单动作分派：导出格式与「打开设置」；动作后关闭子菜单（导出/设置内部已 closeMenu）
+  function onSubClick(e) {
+    var btn = e.target.closest && e.target.closest('button');
+    if (!btn || !sub || !sub.contains(btn)) return;
+    e.stopPropagation();
+    if (btn.disabled) return;
+    var act = btn.dataset.act;
+    if (act && act.indexOf('export:') === 0) { closeSub(); actExport(act.slice(7)); return; }
+    if (act === 'options') { closeSub(); actOpenOptions(); return; }
   }
 
   // 翻译本页 / 显示原文（toggle 语义）。
@@ -452,7 +575,10 @@
         if (s) { s.targetStyle = s.targetStyle || {}; s.targetStyle.theme = id; TA.injector.applyThemeSettings(s); }
       } catch (e) { /* injector 未就绪 */ }
     }
-    renderSub('themes'); // 刷新当前档高亮
+    if (subKind === 'themes') { // 刷新当前档高亮（仅子面板打开时，不再碰主菜单）
+      renderSub('themes');
+      positionSub(currentSubAnchor());
+    }
   }
 
   /* ==================== 球事件：点击 / hover / 拖动 ==================== */
@@ -464,7 +590,7 @@
     // 在 click 动作执行前收起（主题子面板点选后即被隐藏、动作与视觉脱节）
     el.addEventListener('mousedown', function (e) {
       if (e.button !== 0) return;
-      if (menu && menu.contains(e.target)) return; // 菜单内交互：不进拖动/点击判定
+      if ((menu && menu.contains(e.target)) || (sub && sub.contains(e.target))) return; // 菜单/子菜单内交互：不进拖动/点击判定
       var r = el.getBoundingClientRect();
       drag = { sx: e.clientX, sy: e.clientY, moved: false, left: r.left, top: r.top };
       e.preventDefault(); // 防选中/防拖影
@@ -474,6 +600,7 @@
       var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < DRAG_PX) return;
       drag.moved = true;
+      closeSub(); // 拖动中关闭子菜单，避免 fixed 面板边拖边追
       el.classList.add('ta-dragging');
       el.style.marginTop = '0'; // 内联 left/top 接管后取消垂直居中偏移
       el.style.left = clampNum(drag.left + dx, 4, document.documentElement.clientWidth - 44) + 'px';
@@ -488,6 +615,7 @@
       if (wasDrag) {
         // 拖拽只移动位置，不翻译；靠近边缘时先吸附，再按结果决定是否记忆自由坐标
         if (!snapToEdge(el)) savePos();
+        else if (subKind) positionSub(currentSubAnchor()); // 吸附换侧后子菜单跟随重定位
         clearTimeout(hoverTimer);
       } else {
         closeMenu();      // 点击不再开菜单（菜单由 hover 展开）
@@ -508,26 +636,25 @@
       scheduleLeaveClose();
     });
     menu.addEventListener('mouseenter', function () { clearTimeout(leaveTimer); });
-    menu.addEventListener('mouseleave', scheduleLeaveClose);
+    menu.addEventListener('mouseleave', function () { scheduleLeaveClose(); scheduleSubLeave(); });
     // 主菜单动作分派（2026-11-15 第 1 轮修复，验收 9）：onMenuClick 此前只定义未注册，
     // 主菜单 6 个动作（翻译本页/仅译文/主题/遮罩/导出/打开设置）全部为死按钮
     menu.addEventListener('click', onMenuClick);
 
-    // 子面板改为悬停打开（点击仍保留兜底）：事件委托，因 renderSub 会清空 menu 重建子节点
+    // 子面板悬停展开（点击仍由 onMenuClick 兜底）：120ms 短延时，避免误触。
+    // 用 btn.isConnected + aria-expanded 判定，不再依赖会销毁按钮的 ta-sub-open 类。
     var subHoverTimer = null;
     menu.addEventListener('mouseover', function (e) {
       var btn = e.target.closest && e.target.closest('button[data-act]');
       if (!btn || !menu.contains(btn)) return;
       var act = btn.dataset.act;
       if (act !== 'themes' && act !== 'export') return;
-      if (btn.classList.contains('ta-sub-open')) return; // 已打开，避免 renderSub 清空后反复触发
       clearTimeout(subHoverTimer);
       subHoverTimer = setTimeout(function () {
-        if (btn && btn.isConnected && !btn.classList.contains('ta-sub-open')) {
-          btn.classList.add('ta-sub-open');
-          renderSub(act);
+        if (btn && btn.isConnected && btn.getAttribute('aria-expanded') !== 'true') {
+          openSub(act, btn);
         }
-      }, 120); // 短延时，避免误触；远小于 scheduleLeaveClose 的 600ms
+      }, 120);
     });
     menu.addEventListener('mouseout', function (e) {
       var btn = e.target.closest && e.target.closest('button[data-act]');
@@ -539,7 +666,8 @@
     if (!menuOpen || pinned) return;
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(function () {
-      if (menuOpen && !pinned && !ball.matches(':hover') && !menu.matches(':hover')) closeMenu();
+      if (menuOpen && !pinned && !ball.matches(':hover') && !menu.matches(':hover') &&
+          (sub && (sub.hidden || !sub.matches(':hover')))) closeMenu();
     }, 600);
   }
 
@@ -1151,7 +1279,15 @@
     void original;
     var trans = document.createElement('div');
     trans.className = 'ta-side-res-trans';
-    trans.textContent = translated;
+    // 译文按 Markdown + TeX 渲染（$...$ / $$...$$）；TA.markdown 以 html:false 解析，
+    // 不执行译文里的 HTML，保留原 textContent 时代的安全性。复制按钮仍用原文。
+    // sidebar.css 的 white-space:pre-wrap 会破坏 KaTeX 块级布局，此处按渲染态覆盖。
+    if (TA.markdown && typeof TA.markdown.renderInto === 'function') {
+      trans.style.whiteSpace = 'normal';
+      TA.markdown.renderInto(trans, translated);
+    } else {
+      trans.textContent = translated; // markdown 基座未加载时回退纯文本
+    }
     var foot = document.createElement('div');
     foot.className = 'ta-side-res-foot';
     var lang = document.createElement('span');
@@ -1345,6 +1481,8 @@
     ball.setAttribute('data-ta-state', pageState === 'on' ? 'on' : (pageState === 'busy' ? 'busy' : 'idle'));
     setBallLabel(pageState === 'on' ? '原' : '译');
     if (menuOpen && !pinned) renderMenuMain(); // 主菜单动态项随状态刷新
+    if (subKind) setSubParentExpanded(subKind, true); // 重建后恢复父项展开态
+    if (subKind === 'themes') { renderSub('themes'); positionSub(currentSubAnchor()); } // 主题高亮随状态刷新
   }
 
   function setupStateObserver() {
@@ -1396,6 +1534,8 @@
       // 菜单/tooltip 是球的子节点，ball.remove() 会一并移除；仅清空引用以便下次重建
       menu = null;
       tip = null;
+      sub = null;
+      subKind = null;
       if (sideOpen) closeSidebar();
       if (ball) { ball.remove(); ball = null; }
       menuOpen = false;
@@ -1407,7 +1547,10 @@
     ball.setAttribute('data-ta-ball-side', cfg.side);
     ball.style.opacity = String(cfg.opacity / 100);
     // 位置设置变化时清除拖动记忆，回到新默认位（用户再次拖动会重新记忆）
-    if (prevSide && prevSide !== cfg.side) clearPos();
+    if (prevSide && prevSide !== cfg.side) {
+      clearPos();
+      if (subKind) positionSub(currentSubAnchor()); // 停靠侧切换 → 子菜单重新选边
+    }
     else if (ball && !ball.style.left) restorePos();
     if (settings.targetStyle && settings.targetStyle.theme) curTheme = settings.targetStyle.theme;
     if (settings.subtitle && typeof settings.subtitle.enabled === 'boolean') subtitleOn = settings.subtitle.enabled;
@@ -1430,7 +1573,7 @@
     applySettings(s);
     // 主題档变化（在别处改的）→ 刷新子面板当前高亮
     if (s.targetStyle && s.targetStyle.theme) curTheme = s.targetStyle.theme;
-    if (menuOpen && pinned) renderSub('themes');
+    if (subKind === 'themes') { renderSub('themes'); positionSub(currentSubAnchor()); } // 主题档在别处改了 → 刷新子面板高亮
     void before;
   }
   // 协议：onMessage 未知 type 时遍历 features.messages 分发；

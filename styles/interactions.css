@@ -120,10 +120,146 @@
   -webkit-user-select: text;
 }
 
-/* 译文行（textContent 回填，不解析 HTML） */
+/* 译文行（Markdown + KaTeX 渲染；不用 pre-line，段落流动交给子元素样式） */
 .ta-sel-trans {
   font-size: 14px;
-  white-space: pre-line;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 译文 Markdown 排版（借鉴 Typora/github.css 的排版数值，缩放到气泡卡尺寸）。
+   全部选择器限定在 .ta-sel-trans 内，不污染宿主页面；.katex 字形由 katex.min.css 负责。 */
+
+.ta-sel-trans > :first-child {
+  margin-top: 0;
+}
+
+.ta-sel-trans > :last-child {
+  margin-bottom: 0;
+}
+
+.ta-sel-trans p,
+.ta-sel-trans blockquote,
+.ta-sel-trans ul,
+.ta-sel-trans ol,
+.ta-sel-trans dl,
+.ta-sel-trans table,
+.ta-sel-trans pre {
+  margin: 0.8em 0;
+}
+
+.ta-sel-trans h1,
+.ta-sel-trans h2,
+.ta-sel-trans h3,
+.ta-sel-trans h4,
+.ta-sel-trans h5,
+.ta-sel-trans h6 {
+  font-weight: bold;
+  line-height: 1.25;
+  margin: 1em 0 0.8em;
+}
+
+.ta-sel-trans h1 { font-size: 1.6em; }
+.ta-sel-trans h2 { font-size: 1.45em; }
+.ta-sel-trans h3 { font-size: 1.3em; }
+.ta-sel-trans h4 { font-size: 1.15em; }
+.ta-sel-trans h5 { font-size: 1.05em; }
+.ta-sel-trans h6 { font-size: 1em; }
+
+.ta-sel-trans a {
+  color: #4183C4;
+  word-break: break-all;
+}
+
+.ta-sel-trans blockquote {
+  border-left: 4px solid #dfe2e5;
+  padding: 0 12px;
+  color: #777777;
+}
+
+.ta-sel-trans ul,
+.ta-sel-trans ol {
+  padding-left: 1.6em;
+}
+
+.ta-sel-trans li > p {
+  margin: 0.3em 0;
+}
+
+.ta-sel-trans hr {
+  border: 0;
+  border-top: 1px solid #e2e5ea;
+  margin: 1em 0;
+}
+
+.ta-sel-trans code,
+.ta-sel-trans tt {
+  font-family: "Lucida Console", Consolas, "Courier", monospace;
+  font-size: 0.9em;
+  background: #f3f4f4;
+  border: 1px solid #e7eaed;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.ta-sel-trans pre {
+  background: #f8f8f8;
+  border: 1px solid #e7eaed;
+  border-radius: 4px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  line-height: 1.45;
+}
+
+.ta-sel-trans pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.9em;
+}
+
+.ta-sel-trans table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.ta-sel-trans table th,
+.ta-sel-trans table td {
+  border: 1px solid #dfe2e5;
+  padding: 5px 10px;
+}
+
+.ta-sel-trans table th {
+  font-weight: bold;
+  background: #f8f8f8;
+}
+
+.ta-sel-trans table tr:nth-child(2n) {
+  background: #f8f8f8;
+}
+
+/* 公式：display 块占满宽并可横向滚动，长公式不撑破气泡卡；
+   行内公式随文字基线对齐（katex.min.css 已定义 .katex 字形与 .katex-display 居中）。 */
+.ta-sel-trans .katex-display {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  padding: 0.2em 0;
+}
+
+.ta-sel-trans .katex-display > .katex {
+  text-align: center;
+}
+
+/* 公式降级 / 解析失败：转义源码以等宽红字提示，不中断其余译文 */
+.ta-sel-trans .ta-math-fallback,
+.ta-sel-trans .katex-error {
+  color: #d93025;
+  font-family: "Lucida Console", Consolas, "Courier", monospace;
+  font-size: 0.92em;
 }
 
 /* 原文回显行（仅单词查询且 showOriginal 开启时可见） */
@@ -295,6 +431,19 @@
   .ta-sel-error {
     color: #ff7b72;
   }
+  /* Markdown 元素暗色适配：仅覆盖背景/边框，.katex 前景色继承 currentColor 无需改动 */
+  .ta-sel-trans a { color: #7f97f5; }
+  .ta-sel-trans blockquote { border-left-color: #454c55; color: #a8b0ba; }
+  .ta-sel-trans hr { border-top-color: #3a4048; }
+  .ta-sel-trans code,
+  .ta-sel-trans tt { background: #2e333a; border-color: #3a4048; }
+  .ta-sel-trans pre { background: #2e333a; border-color: #3a4048; }
+  .ta-sel-trans table th,
+  .ta-sel-trans table td { border-color: #3a4048; }
+  .ta-sel-trans table th,
+  .ta-sel-trans table tr:nth-child(2n) { background: #2e333a; }
+  .ta-sel-trans .ta-math-fallback,
+  .ta-sel-trans .katex-error { color: #ff7b72; }
   .ta-sel-menu {
     background: #22262c;
     border-color: #3a4048;

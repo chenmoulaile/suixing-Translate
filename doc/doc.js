@@ -24,14 +24,18 @@
   var state = {
     fileName: '',
     fileSize: 0,
-    kind: 'text',          // 'text' | 'subtitle'
+    kind: 'text',          // 'text' | 'subtitle' | 'pdf'
     segments: [],
     groups: [],            // 与 segments 平行的分组标签（如“第 N 页 / 章节名”），可为 null
     cues: null,            // 字幕：与 segments 平行 [{start,end,text}]
     translations: [],
     errors: [],
     cancelled: false,
-    batchSeq: 0
+    batchSeq: 0,
+    // PDF 分页/几何元数据（仅 kind==='pdf' 时有效）
+    pdfPages: [],          // [{pageNo,width,height,lines:[...],blocks:[...]}]
+    segMeta: [],           // 与 segments 平行 {pageNo,x,y,right,bottom,width,height,lines}
+    formulaSlots: []       // 与 segments 平行 [{token,source,tex,displayMode,bbox}]
   };
 
   var el = {};
@@ -105,12 +109,21 @@
       el.progressPhase.textContent = '正在取消…';
     });
 
-    // 显示样式切换
+    // 显示样式切换（段式三态 + PDF 分页两态）
     document.querySelectorAll('.style-toggle .seg').forEach(function (btn) {
       btn.addEventListener('click', function () {
         document.querySelectorAll('.style-toggle .seg').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
-        el.results.setAttribute('data-style', btn.getAttribute('data-style'));
+        var style = btn.getAttribute('data-style');
+        el.results.setAttribute('data-style', style);
+        // 非 PDF 文档没有分页视图：选到分页模式时回退到段式译文，避免空视图
+        if (state.kind !== 'pdf' && (style === 'page-compare' || style === 'translation-page')) {
+          var fallback = style === 'page-compare' ? 'bilingual' : 'translation';
+          document.querySelectorAll('.style-toggle .seg').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-style') === fallback);
+          });
+          el.results.setAttribute('data-style', fallback);
+        }
       });
     });
 
@@ -189,6 +202,10 @@
     state.translations = [];
     state.errors = [];
     state.cancelled = false;
+    state.pdfPages = [];
+    state.segMeta = [];
+    state.formulaSlots = [];
+    if (TA.pdfFormula && TA.pdfFormula.reset) TA.pdfFormula.reset();
     el.notice.hidden = true;
     el.results.hidden = true;
     el.cardList.innerHTML = '';
@@ -221,6 +238,13 @@
         state.segments = parsed.segments || [];
         state.groups = parsed.groups || new Array(state.segments.length).fill(null);
         state.cues = parsed.cues || null;
+        state.pdfPages = parsed.pdfPages || [];
+        state.segMeta = parsed.segMeta || [];
+
+        // 公式遮罩：切分/翻译前把 TeX 换成 ⟪mN⟫，token 作为普通串随段送 MT。
+        var masked = maskAllSegments(state.segments);
+        state.segments = masked.segments;
+        state.formulaSlots = masked.slots;
 
         if (parsed.notice) showNotice(parsed.notice, 'info');
         if (!state.segments.length) {
@@ -232,7 +256,8 @@
         return translateAll(state.segments, targetLang, onTranslateProgress, function () { return state.cancelled; });
       })
       .then(function (result) {
-        state.translations = result.translations;
+        // 译文回填前先还原公式：把 ⟪mN⟫ 换回原始 TeX，绝不送 MT 改写。
+        state.translations = restoreAllTranslations(result.translations);
         state.errors = result.errors || [];
         if (result.cancelled) {
           showNotice('已取消翻译；未完成的段落显示原文。', 'info');
@@ -531,7 +556,95 @@
     return out.join('/');
   }
 
-  /* ==================== PDF 解析 ==================== */
+  /* ==================== PDF 解析（保留几何 / 坐标 / 分页） ==================== */
+
+  // pdf.js 3.11 的 page.getTextContent() 项带 transform，但必须叠加 viewport
+  // transform 才是页面坐标（y 向下）。保留 x/y/w/h 供分页视图绝对定位使用。
+  function pdfItemRect(it, viewport) {
+    var tr = it.transform || [0, 0, 0, 0, 0, 0];
+    var m = viewport && viewport.transform;
+    var x = tr[4], y = tr[5];
+    if (m) {
+      x = m[0] * tr[4] + m[2] * tr[5] + m[4];
+      y = m[1] * tr[4] + m[3] * tr[5] + m[5];
+    }
+    var scaleX = m ? m[0] : 1;
+    var scaleY = m ? Math.abs(m[3]) : 1;
+    var w = Math.abs(it.width != null ? it.width * scaleX : (tr[0] || 0) * scaleX);
+    var h = Math.abs(it.height != null ? it.height : (tr[3] || 0)) * scaleY;
+    if (!h) h = 10;
+    return { x: x, y: y, w: w, h: h };
+  }
+
+  // 按 y 聚类成行，行内按 x 排序；容差随字高自适应，避免双栏基线微错位被合并。
+  function pdfItemsToLines(items, viewport) {
+    var lines = [];
+    (items || []).forEach(function (it) {
+      if (!it || typeof it.str !== 'string' || !it.str.trim()) return;
+      var rect = pdfItemRect(it, viewport);
+      var line = null;
+      var tol = Math.max(1.2, rect.h * 0.35);
+      for (var i = lines.length - 1; i >= 0; i--) {
+        if (Math.abs(lines[i].y - rect.y) <= Math.max(tol, lines[i].h * 0.35)) { line = lines[i]; break; }
+      }
+      if (!line) {
+        line = { y: rect.y, x: rect.x, right: rect.x + rect.w, h: rect.h, items: [] };
+        lines.push(line);
+      } else {
+        line.x = Math.min(line.x, rect.x);
+        line.right = Math.max(line.right, rect.x + rect.w);
+        line.h = Math.max(line.h, rect.h);
+      }
+      line.items.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h, str: it.str, font: it.fontName, dir: it.dir });
+    });
+    lines.forEach(function (l) {
+      l.items.sort(function (a, b) { return a.x - b.x; });
+      l.str = joinPdfItems(l.items);
+      l.width = l.right - l.x;
+    });
+    return lines;
+  }
+
+  // 双栏检测：x 起点分布若存在明显断层且两侧各有多行，则按左右栏分别由上到下排序。
+  function orderPdfLines(lines, pageWidth) {
+    if (lines.length < 6) return lines.slice().sort(function (a, b) { return a.y - b.y; });
+    var xs = lines.map(function (l) { return l.x; }).sort(function (a, b) { return a - b; });
+    var best = -1, bestGap = 0;
+    for (var i = 1; i < xs.length; i++) {
+      var gap = xs[i] - xs[i - 1];
+      if (gap > bestGap) { bestGap = gap; best = i; }
+    }
+    var threshold = pageWidth * 0.12;
+    if (best <= 0 || bestGap < threshold || best < 2 || xs.length - best < 2) {
+      return lines.slice().sort(function (a, b) { return a.y - b.y; });
+    }
+    var splitX = (xs[best - 1] + xs[best]) / 2;
+    var left = [], right = [];
+    lines.forEach(function (l) { (l.x < splitX ? left : right).push(l); });
+    left.sort(function (a, b) { return a.y - b.y; });
+    right.sort(function (a, b) { return a.y - b.y; });
+    return left.concat(right);
+  }
+
+  // 行按行距聚段；保留行首缩进（不再 trim 掉），行尾空白才清掉。
+  function pdfLinesToParagraphs(lines) {
+    var paras = [], cur = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (i > 0 && cur.length) {
+        var gap = lines[i].y - lines[i - 1].y;
+        var threshold = Math.max(lines[i - 1].h, lines[i].h, 8) * 1.7;
+        if (gap > threshold) {
+          paras.push(cur);
+          cur = [];
+        }
+      }
+      cur.push(lines[i]);
+    }
+    if (cur.length) paras.push(cur);
+    return paras.filter(function (p) {
+      return p.some(function (l) { return l.str.trim(); });
+    });
+  }
 
   function parsePdf(buffer) {
     if (typeof pdfjsLib === 'undefined') {
@@ -548,26 +661,64 @@
         if (pages > PDF_PAGE_LIMIT) {
           notice = '文档共 ' + pages + ' 页，仅翻译前 ' + PDF_PAGE_LIMIT + ' 页。';
         }
-        var segments = [], groups = [];
+        var segments = [], groups = [], segMeta = [], pdfPages = [];
         var chain = Promise.resolve();
         for (var p = 1; p <= limit; p++) {
           (function (pageNo) {
             chain = chain.then(function () {
-              return pdf.getPage(pageNo).then(function (page) { return page.getTextContent(); })
-                .then(function (tc) {
-                  var paras = pdfItemsToParagraphs(tc.items);
+              return pdf.getPage(pageNo).then(function (page) {
+                var viewport = page.getViewport({ scale: 1 });
+                return page.getTextContent().then(function (tc) {
+                  var pageWidth = viewport.width || 612;
+                  var pageHeight = viewport.height || 792;
+                  var lines = orderPdfLines(pdfItemsToLines(tc.items, viewport), pageWidth);
+                  var paras = pdfLinesToParagraphs(lines);
+                  var pageRec = {
+                    pageNo: pageNo,
+                    width: pageWidth,
+                    height: pageHeight,
+                    lines: lines,
+                    blocks: []
+                  };
+                  pdfPages.push(pageRec);
                   paras.forEach(function (para) {
-                    segments.push(para);
+                    var ys = para.map(function (l) { return l.y; });
+                    var bottoms = para.map(function (l) { return l.y + l.h; });
+                    var xs = para.map(function (l) { return l.x; });
+                    var rights = para.map(function (l) { return l.right; });
+                    var top = Math.min.apply(null, ys);
+                    var bottom = Math.max.apply(null, bottoms);
+                    var left = Math.min.apply(null, xs);
+                    var right = Math.max.apply(null, rights);
+                    var text = para.map(function (l) { return l.str; }).join('\n');
+                    text = text.replace(/[ \t]+$/gm, '');
+                    if (!text.trim()) return;
+                    var idx = segments.length;
+                    segments.push(text);
                     groups.push('第 ' + pageNo + ' 页');
+                    segMeta.push({
+                      pageNo: pageNo,
+                      x: left, y: top, width: right - left, height: bottom - top,
+                      right: right, bottom: bottom,
+                      lines: para
+                    });
+                    pageRec.blocks.push(idx);
                   });
-                })
-                .catch(function () { /* 单页失败跳过 */ });
+                });
+              });
+            }).catch(function (e) {
+              // 单页失败写一条可见占位，避免静默丢页
+              notice = (notice ? notice + ' ' : '') + '第 ' + pageNo + ' 页解析失败（' + friendly(e) + '）。';
             });
           })(p);
         }
         return chain.then(function () {
           if (!segments.length) throw new Error('未能在 PDF 中提取到文本（可能是扫描版图片 PDF）。');
-          return { kind: 'text', segments: segments, groups: groups, notice: notice };
+          pdfPages.sort(function (a, b) { return a.pageNo - b.pageNo; });
+          return {
+            kind: 'pdf', segments: segments, groups: groups,
+            segMeta: segMeta, pdfPages: pdfPages, notice: notice
+          };
         });
       }).catch(function (err) {
         throw new Error('PDF 打开失败：' + friendly(err));
@@ -575,42 +726,6 @@
     } catch (e) {
       return Promise.reject(new Error('PDF 解析失败：' + friendly(e)));
     }
-  }
-
-  function pdfItemsToParagraphs(items) {
-    var lines = [];
-    (items || []).forEach(function (it) {
-      if (!it || typeof it.str !== 'string' || !it.str.trim()) return;
-      var transform = it.transform || [0, 0, 0, 0, 0, 0];
-      var y = transform[5];
-      var x = transform[4];
-      var line = null;
-      for (var i = 0; i < lines.length; i++) {
-        if (Math.abs(lines[i].y - y) <= 2) { line = lines[i]; break; }
-      }
-      if (!line) { line = { y: y, items: [], height: 0 }; lines.push(line); }
-      line.items.push({ x: x, str: it.str });
-      var h = it.height || Math.abs(transform[3]) || 10;
-      line.height = Math.max(line.height, h);
-    });
-    if (!lines.length) return [];
-    lines.sort(function (a, b) { return b.y - a.y; }); // 从上到下
-    lines.forEach(function (l) {
-      l.items.sort(function (a, b) { return a.x - b.x; });
-      l.text = joinPdfItems(l.items);
-    });
-
-    var paras = [], cur = [];
-    for (var i = 0; i < lines.length; i++) {
-      if (i > 0 && cur.length) {
-        var gap = lines[i - 1].y - lines[i].y;
-        var threshold = Math.max(lines[i - 1].height, lines[i].height, 8) * 1.7;
-        if (gap > threshold) { paras.push(cur.join('\n')); cur = []; }
-      }
-      cur.push(lines[i].text);
-    }
-    if (cur.length) paras.push(cur.join('\n'));
-    return paras.map(function (p) { return p.trim(); }).filter(function (p) { return p.length > 0; });
   }
 
   function joinPdfItems(items) {
@@ -622,6 +737,77 @@
       out += s;
     });
     return out.trim();
+  }
+
+  /* ==================== 公式占位 / 还原 ==================== */
+
+  function hasFormula() { return !!(TA && TA.pdfFormula); }
+
+  // 在翻译前对每段遮罩公式；token 留在段内随 MT 走，slots 按段索引登记。
+  function maskAllSegments(segments) {
+    var masked = [];
+    var slots = [];
+    segments.forEach(function (seg, i) {
+      if (!hasFormula()) {
+        masked.push(seg);
+        slots.push([]);
+        return;
+      }
+      var meta = state.segMeta[i] || null;
+      var bbox = meta ? { x: meta.x, y: meta.y, width: meta.width, height: meta.height, pageNo: meta.pageNo } : null;
+      var r = TA.pdfFormula.maskFormulas(seg, bbox);
+      masked.push(r.masked);
+      slots.push(r.slots);
+    });
+    return { segments: masked, slots: slots };
+  }
+
+  function restoreAllTranslations(translations) {
+    return (translations || []).map(function (v, i) {
+      var out = v == null ? '' : v;
+      if (hasFormula() && state.formulaSlots[i] && state.formulaSlots[i].length) {
+        out = TA.pdfFormula.unmaskFormulas(out, state.formulaSlots[i]);
+      }
+      return out;
+    });
+  }
+
+  // 把一段文本渲染为 DOM：公式块走 KaTeX/TA.markdown，普通文本用 textContent 防 XSS。
+  function appendSegmentContent(container, text, kind) {
+    var src = String(text == null ? '' : text);
+    if (!hasFormula()) {
+      TA.markdown.renderInto(container, src);
+      return;
+    }
+    var chunks = TA.pdfFormula.splitByFormulas(src);
+    var pending = '';
+    function flush() {
+      if (!pending) return;
+      var span = document.createElement('span');
+      span.className = 'segment-text';
+      if (TA.markdown && TA.markdown.isAvailable && TA.markdown.isAvailable()) {
+        TA.markdown.renderInto(span, pending);
+      } else {
+        span.textContent = pending;
+      }
+      container.appendChild(span);
+      pending = '';
+    }
+    chunks.forEach(function (ch) {
+      if (ch.type === 'text') {
+        // 普通文本（可能含 Markdown）交给共享渲染引擎，保留链接/加粗/换行语义
+        pending += ch.value;
+        return;
+      }
+      flush();
+      var slot = document.createElement('span');
+      slot.className = 'formula-slot' + (ch.displayMode ? ' formula-display' : ' formula-inline');
+      slot.setAttribute('data-formula', ch.tex);
+      slot.innerHTML = TA.pdfFormula.renderFormulaHTML(ch.value, ch.displayMode);
+      container.appendChild(slot);
+    });
+    flush();
+    void kind;
   }
 
   /* ==================== 翻译总线 ==================== */
@@ -761,24 +947,109 @@
     el.resultMeta.textContent = kindLabel + ' · ' + state.segments.length + ' 段 · ' + formatBytes(state.fileSize) +
       ' · → ' + langLabel;
     document.querySelectorAll('.subtitle-only').forEach(function (b) { b.hidden = state.kind !== 'subtitle'; });
+    document.querySelectorAll('.pdf-only').forEach(function (b) { b.hidden = state.kind !== 'pdf'; });
+    document.querySelectorAll('.style-toggle .seg').forEach(function (b) {
+      var st = b.getAttribute('data-style');
+      if (st === 'page-compare' || st === 'translation-page') b.hidden = state.kind !== 'pdf';
+    });
 
     var frag = document.createDocumentFragment();
-    var lastGroup = '__none__';
-    state.segments.forEach(function (seg, i) {
-      var group = state.groups[i] || null;
-      if (group && group !== lastGroup) {
-        var gl = document.createElement('div');
-        gl.className = 'group-label';
-        gl.textContent = group;
-        frag.appendChild(gl);
-        lastGroup = group;
-      }
-      frag.appendChild(buildCard(seg, i));
-    });
+    if (state.kind === 'pdf' && state.pdfPages.length) {
+      // PDF 两种视图：分页对照 / 仅译文（保排版），另保留段式作为第三种模式。
+      var pageCompare = document.createElement('div');
+      pageCompare.className = 'pdf-pages';
+      state.pdfPages.forEach(function (page) { pageCompare.appendChild(buildPdfPagePair(page)); });
+      frag.appendChild(pageCompare);
+      var segList = document.createElement('div');
+      segList.className = 'pdf-segment-list';
+      var lastGroup = '__none__';
+      state.segments.forEach(function (seg, i) {
+        var group = state.groups[i] || null;
+        if (group && group !== lastGroup) {
+          var gl = document.createElement('div');
+          gl.className = 'group-label';
+          gl.textContent = group;
+          segList.appendChild(gl);
+          lastGroup = group;
+        }
+        segList.appendChild(buildCard(seg, i));
+      });
+      frag.appendChild(segList);
+    } else {
+      var lastGroup2 = '__none__';
+      state.segments.forEach(function (seg, i) {
+        var group = state.groups[i] || null;
+        if (group && group !== lastGroup2) {
+          var gl2 = document.createElement('div');
+          gl2.className = 'group-label';
+          gl2.textContent = group;
+          frag.appendChild(gl2);
+          lastGroup2 = group;
+        }
+        frag.appendChild(buildCard(seg, i));
+      });
+    }
     el.cardList.innerHTML = '';
     el.cardList.appendChild(frag);
     el.results.hidden = false;
-    el.results.setAttribute('data-style', 'bilingual');
+    // PDF 默认进入分页对照；非 PDF 维持原双语段式
+    el.results.setAttribute('data-style', state.kind === 'pdf' ? 'page-compare' : 'bilingual');
+    syncStyleActive();
+  }
+
+  function syncStyleActive() {
+    var current = el.results.getAttribute('data-style') || 'bilingual';
+    document.querySelectorAll('.style-toggle .seg').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-style') === current);
+    });
+  }
+
+  // 按比例把 pt 坐标转成页面容器的百分比位置，原样保留排版。
+  function placeAt(node, rect, page) {
+    if (!rect || !page) return;
+    var pw = page.width || 612, ph = page.height || 792;
+    node.style.left = (rect.x / pw * 100).toFixed(3) + '%';
+    node.style.top = (rect.y / ph * 100).toFixed(3) + '%';
+    node.style.width = (Math.max(rect.width, 20) / pw * 100).toFixed(3) + '%';
+    node.style.minHeight = (Math.max(rect.height, 8) / ph * 100).toFixed(3) + '%';
+  }
+
+  // data（可选）：{segments,translations,segMeta}，测试/独立调用时传入；缺省用 state。
+  function buildPdfPagePair(page, data) {
+    var view = data || {
+      segments: state.segments,
+      translations: state.translations,
+      segMeta: state.segMeta
+    };
+    var pair = document.createElement('section');
+    pair.className = 'pdf-page-pair';
+    pair.setAttribute('data-page', String(page.pageNo));
+
+    var label = document.createElement('div');
+    label.className = 'pdf-page-label';
+    label.textContent = '第 ' + page.pageNo + ' 页';
+    pair.appendChild(label);
+
+    ['pdf-source', 'pdf-target'].forEach(function (cls) {
+      var layer = document.createElement('div');
+      layer.className = 'pdf-page ' + cls;
+      layer.style.aspectRatio = page.width + ' / ' + page.height;
+      (page.blocks || []).forEach(function (idx) {
+        var meta = view.segMeta && view.segMeta[idx];
+        if (!meta) return;
+        var block = document.createElement('div');
+        block.className = 'pdf-block';
+        block.setAttribute('data-seg', String(idx));
+        placeAt(block, meta, page);
+        var text = cls === 'pdf-source'
+          ? (view.segments ? view.segments[idx] : '')
+          : (view.translations && view.translations[idx] != null ? view.translations[idx] : view.segments[idx]);
+        appendSegmentContent(block, text, cls);
+        layer.appendChild(block);
+      });
+      pair.appendChild(layer);
+    });
+    return pair;
   }
 
   function buildCard(seg, i) {
@@ -802,13 +1073,13 @@
 
     var orig = document.createElement('p');
     orig.className = 'segment-original';
-    orig.textContent = seg;
+    appendSegmentContent(orig, seg, 'original');
     body.appendChild(orig);
 
     var trans = document.createElement('p');
     trans.className = 'segment-translation';
     if (state.errors[i]) trans.classList.add('failed');
-    trans.textContent = state.translations[i] != null ? state.translations[i] : seg;
+    appendSegmentContent(trans, state.translations[i] != null ? state.translations[i] : seg, 'translation');
     body.appendChild(trans);
 
     if (state.errors[i]) {
@@ -882,8 +1153,9 @@
       var txt = '';
       for (var j = 0; j < n; j++) txt += s[j] + '\n' + t[j] + '\n\n';
       download(safeName('bilingual.txt'), txt, 'text/plain;charset=utf-8');
-    } else if (type === 'html') {
-      download(safeName('bilingual.html'), buildExportHtml(), 'text/html;charset=utf-8');
+    } else if (type === 'html' || type === 'translation-html') {
+      download(safeName(type === 'html' ? 'bilingual.html' : 'translated.html'),
+        buildExportHtml(type === 'translation-html'), 'text/html;charset=utf-8');
     } else if (type === 'translated-txt') {
       download(safeName('translated.txt'), t.join('\n\n'), 'text/plain;charset=utf-8');
     } else if (type === 'srt') {
@@ -906,25 +1178,88 @@
     return out;
   }
 
-  function buildExportHtml() {
+  // PDF 导出内联 KaTeX 样式兜底；行内/块级公式还原原始 TeX 后渲染。
+  function exportFormulaHtml(text) {
+    var src = String(text == null ? '' : text);
+    if (!hasFormula()) return esc(src);
+    var chunks = TA.pdfFormula.splitByFormulas(src);
+    var out = '';
+    chunks.forEach(function (ch) {
+      if (ch.type === 'text') { out += esc(ch.value); return; }
+      var html = TA.pdfFormula.renderFormulaHTML(ch.value, ch.displayMode);
+      out += '<span class="' + (ch.displayMode ? 'formula-display' : 'formula-inline') +
+        '" data-formula="' + esc(ch.tex) + '">' + html + '</span>';
+    });
+    return out;
+  }
+
+  // 分页保排版导出：按 source/target 两层绝对定位，左右对照或仅译文。
+  function buildPdfExportHtml(translatedOnly) {
+    var pages = '';
+    var pageStyle = 'position:relative;margin:18px 0;border:1px solid #e2e5ec;border-radius:8px;overflow:hidden;background:#fff';
+    (state.pdfPages || []).forEach(function (page) {
+      var layers = '';
+      if (!translatedOnly) {
+        layers += '<div class="pdf-source" style="position:absolute;inset:0">' + pdfLayerBlocks(page, false) + '</div>';
+      }
+      layers += '<div class="pdf-target" style="position:absolute;inset:0' +
+        (translatedOnly ? '' : ';left:50%;width:50%') + '">' + pdfLayerBlocks(page, true) + '</div>';
+      pages += '<section class="pdf-page" data-page="' + page.pageNo + '" style="' + pageStyle +
+        ';aspect-ratio:' + page.width + '/' + page.height + '">' + layers + '</section>';
+    });
+    return '<!DOCTYPE html>\n<html lang="zh-CN"><head><meta charset="utf-8">' +
+      '<title>' + esc(state.fileName) + (translatedOnly ? ' · 仅译文' : ' · 分页对照') + '</title><style>' +
+      'body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;max-width:1100px;margin:32px auto;padding:0 16px;color:#222}' +
+      '.pdf-block{position:absolute;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.35;overflow:hidden}' +
+      '.pdf-source{color:#666}.pdf-target{color:#111}' +
+      '.formula-inline{display:inline}.formula-display{display:block;margin:6px 0}' +
+      '</style></head><body><h1>' + esc(state.fileName) + '</h1>' + pages + '</body></html>';
+  }
+
+  function pdfLayerBlocks(page, translated) {
+    var out = '';
+    var pw = page.width || 612, ph = page.height || 792;
+    (page.blocks || []).forEach(function (idx) {
+      var meta = state.segMeta[idx];
+      if (!meta) return;
+      var text = translated
+        ? (state.translations[idx] != null ? state.translations[idx] : state.segments[idx])
+        : state.segments[idx];
+      var style = 'left:' + (meta.x / pw * 100).toFixed(3) + '%;top:' + (meta.y / ph * 100).toFixed(3) +
+        '%;width:' + (Math.max(meta.width, 20) / pw * 100).toFixed(3) + '%';
+      out += '<div class="pdf-block" style="' + style + '">' + exportFormulaHtml(text) + '</div>';
+    });
+    return out;
+  }
+
+  function buildExportHtml(translatedOnly) {
+    if (state.kind === 'pdf' && state.pdfPages.length) {
+      return buildPdfExportHtml(!!translatedOnly);
+    }
     var rows = '';
     for (var i = 0; i < state.segments.length; i++) {
       var group = state.groups[i] ? '<div class="grp">' + esc(state.groups[i]) + '</div>' : '';
-      rows += '<section class="pair">' + group +
-        '<div class="num">' + (i + 1) + '</div>' +
-        '<div class="col"><div class="lbl">原文</div><div class="orig">' + esc(state.segments[i]) + '</div></div>' +
-        '<div class="col"><div class="lbl">译文</div><div class="trans">' + esc(state.translations[i]) + '</div></div>' +
-        '</section>\n';
+      if (translatedOnly) {
+        rows += '<section class="pair">' + group + '<div class="col"><div class="lbl">译文</div>' +
+          '<div class="trans">' + exportFormulaHtml(state.translations[i]) + '</div></div></section>\n';
+      } else {
+        rows += '<section class="pair">' + group +
+          '<div class="num">' + (i + 1) + '</div>' +
+          '<div class="col"><div class="lbl">原文</div><div class="orig">' + exportFormulaHtml(state.segments[i]) + '</div></div>' +
+          '<div class="col"><div class="lbl">译文</div><div class="trans">' + exportFormulaHtml(state.translations[i]) + '</div></div>' +
+          '</section>\n';
+      }
     }
     return '<!DOCTYPE html>\n<html lang="zh-CN"><head><meta charset="utf-8">' +
-      '<title>' + esc(state.fileName) + ' · 双语对照</title><style>' +
+      '<title>' + esc(state.fileName) + (translatedOnly ? ' · 仅译文' : ' · 双语对照') + '</title><style>' +
       'body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;max-width:860px;margin:40px auto;padding:0 20px;color:#222;line-height:1.7}' +
       'h1{font-size:22px}.pair{display:flex;gap:16px;border:1px solid #e2e5ec;border-radius:10px;padding:14px 16px;margin:12px 0;position:relative}' +
       '.num{position:absolute;top:10px;right:14px;color:#aaa;font-size:12px}.grp{width:100%;color:#5b7cfa;font-size:12px;font-weight:700;margin-bottom:4px}' +
       '.col{flex:1;min-width:0}.lbl{font-size:11px;color:#999;margin-bottom:4px}.orig{color:#777;white-space:pre-wrap;word-break:break-word}' +
       '.trans{color:#111;font-weight:500;white-space:pre-wrap;word-break:break-word}' +
+      '.formula-inline{display:inline}.formula-display{display:block;margin:6px 0}' +
       '@media(max-width:640px){.pair{flex-direction:column}}</style></head><body>' +
-      '<h1>' + esc(state.fileName) + ' · 双语对照</h1>' + rows + '</body></html>';
+      '<h1>' + esc(state.fileName) + (translatedOnly ? ' · 仅译文' : ' · 双语对照') + '</h1>' + rows + '</body></html>';
   }
 
   function download(filename, content, mime) {
@@ -983,8 +1318,13 @@
     paragraphsFromText: paragraphsFromText,
     paragraphsFromHtml: paragraphsFromHtml,
     makeChunks: makeChunks,
-    // 测试入口：从 ArrayBuffer 解析 PDF 为段落（修复 l-is-not-defined 回归用）
-    parsePdfBuffer: function (buffer) { return parsePdf(buffer); }
+    // 测试入口：从 ArrayBuffer 解析 PDF 为段落（保留几何/分页/公式）
+    parsePdfBuffer: function (buffer) { return parsePdf(buffer); },
+    pdfItemsToLines: pdfItemsToLines,
+    maskAllSegments: maskAllSegments,
+    restoreAllTranslations: restoreAllTranslations,
+    buildPdfPagePair: buildPdfPagePair,
+    buildExportHtml: buildExportHtml
   };
 
   if (document.readyState === 'loading') {

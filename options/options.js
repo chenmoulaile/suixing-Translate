@@ -68,19 +68,20 @@
     ['es', 'Español'], ['pt', 'Português'], ['it', 'Italiano'], ['hi', 'हिन्दी']
   ];
 
-  // 译文主题 24 档 fallback（与 shared/defaults.js 的 TA.THEMES/TA.THEME_NAMES 定稿一致；
+  // 译文主题 26 档 fallback（与 shared/defaults.js 的 TA.THEMES/TA.THEME_NAMES 定稿一致；
   // defaults.js v2 就位后自动切换到 TA.*）
   const THEMES_FALLBACK = ['none', 'grey', 'dashed', 'thinDashed', 'dotted', 'underline',
     'nativeUnderline', 'nativeDashed', 'nativeDotted', 'wavy', 'dashedBorder', 'solidBorder',
     'dividingLine', 'highlight', 'marker', 'marker2', 'background', 'opacity', 'mask',
-    'paper', 'blockquote', 'weakening', 'italic', 'bold'];
+    'paper', 'blockquote', 'weakening', 'italic', 'bold', 'doubleUnderline', 'pill'];
   const THEME_NAMES_FALLBACK = {
     none: '无', grey: '黑灰', dashed: '虚线下划线', thinDashed: '细虚线', dotted: '点状',
     underline: '直线', nativeUnderline: '原生下划线', nativeDashed: '原生虚线',
     nativeDotted: '原生点线', wavy: '波浪', dashedBorder: '虚线边框', solidBorder: '实线边框',
     dividingLine: '分割线', highlight: '高亮', marker: '马克笔', marker2: '马克笔2',
     background: '背景色', opacity: '透明', mask: '模糊(学习)', paper: '白纸阴影',
-    blockquote: '引用', weakening: '弱化', italic: '斜体', bold: '加粗'
+    blockquote: '引用', weakening: '弱化', italic: '斜体', bold: '加粗',
+    doubleUnderline: '双下划线', pill: '胶囊描边'
   };
   // 内置站点规则表（只读展示用，与 content/rules.js 的 BUILTIN_RULES 保持一致；
   // 运行时以 content 端为准，此处仅用于展示与骨架生成）
