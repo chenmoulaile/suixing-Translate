@@ -52,7 +52,7 @@
     underline: '直线', nativeUnderline: '原生下划线', nativeDashed: '原生虚线',
     nativeDotted: '原生点线', wavy: '波浪', dashedBorder: '虚线边框', solidBorder: '实线边框',
     dividingLine: '分割线', highlight: '高亮', marker: '马克笔', marker2: '马克笔2',
-    background: '背景色', opacity: '透明', mask: '模糊(学习)', paper: '白纸阴影',
+    background: '背景色', opacity: '透明', mask: '模糊（学习模式）', paper: '白纸阴影',
     blockquote: '引用', weakening: '弱化', italic: '斜体', bold: '加粗',
     doubleUnderline: '双下划线', pill: '胶囊描边'
   };
@@ -61,7 +61,7 @@
   var ball = null, menu = null, tip = null, sub = null;
   var inited = false;
   var menuOpen = false;
-  var pinned = false;         // 子面板展开时菜单不因 mouseleave 收起
+  var pinned = false;         // 菜单保持展开：键盘展开或子面板打开时不因 mouseleave 收起
   var subKind = null;         // 子菜单当前类别 themes|export|null
   var subHideTimer = 0, subLeaveTimer = 0; // 子菜单隐藏收尾 / 跨缝隙延迟关闭
   var hoverTimer = 0, leaveTimer = 0, tipTimer = 0, tipHideTimer = 0;
@@ -76,6 +76,7 @@
   var batch = { startT: 0, doneBase: 0, emaMs: 0, lastT: 0, lastDone: 0 };
   var stateObserver = null;
   var cleanupObserver = null;
+  var fullscreenBound = false; // setupFullscreen 幂等守卫（applySettings 每次都会调用）
   // 划译台侧边栏（懒创建，常驻 DOM 隐藏）
   var sideEls = null;         // { backdrop, panel, ... } DOM 引用集合
   var sideOpen = false;
@@ -139,6 +140,8 @@
       el.className = 'ta-float-ball';
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0'); // 供侧边栏关闭后回焦
+      el.setAttribute('aria-haspopup', 'menu');
+      el.setAttribute('aria-expanded', 'false');
       el.setAttribute('aria-label', '随行翻译悬浮球');
       el.textContent = '译';
       // 菜单/tooltip 回归为球的子节点：CSS 用 position:absolute 相对球定位，
@@ -283,9 +286,11 @@
     void menu.offsetHeight;
     menu.classList.add('ta-menu-show');
     ball.classList.add('ta-menu-open');
+    if (ball) ball.setAttribute('aria-expanded', 'true');
     menuOpen = true;
     pinned = !!pin;
-    hideTip();
+    // 不在这里 hideTip：菜单展开期间 styles/ball.css 会把 .ta-ball-tip 挪到球上方，
+    // 既保证菜单项不被遮挡，也让前 5 次引导 tip 能自然消失（否则 hoverDelay 先开菜单、tip 永不出现）。
   }
 
   function closeMenu() {
@@ -293,8 +298,11 @@
     closeSub();
     menu.classList.remove('ta-menu-show');
     ball.classList.remove('ta-menu-open');
+    if (ball) ball.setAttribute('aria-expanded', 'false');
     menuOpen = false;
     pinned = false;
+    // 键盘操作收起菜单时把焦点还给球，避免焦点随隐藏的菜单项落回 body
+    if (ball && menu.contains(document.activeElement)) ball.focus();
     // 等过渡结束再隐藏，避免闪烁
     setTimeout(function () { if (!menuOpen) menu.hidden = true; }, 180);
   }
@@ -313,6 +321,7 @@
     renderSub(kind);
     sub.hidden = false;
     sub.classList.add('ta-sub-show');
+    pinned = true; // 子面板展开期间菜单不因 mouseleave 收起（见 scheduleLeaveClose）
     // 父项展开态
     setSubParentExpanded(kind, true);
     void sub.offsetWidth; // 强制回流后再定位（见 openMenu 同款写法）
@@ -328,6 +337,7 @@
     sub.classList.remove('ta-sub-show');
     setSubParentExpanded(subKind, false);
     subKind = null;
+    pinned = false;
     removeSubReposition();
     subHideTimer = setTimeout(function () {
       if (!sub || !sub.classList.contains('ta-sub-show')) sub.hidden = true;
@@ -385,6 +395,7 @@
       if (!subKind) return;
       if ((sub && sub.matches(':hover')) || (menu && menu.matches(':hover'))) return;
       closeSub();
+      scheduleLeaveClose(); // 子面板收起后，菜单恢复按 hover 自动收起（pinned 已在 closeSub 复位）
     }, 300);
   }
 
@@ -623,6 +634,20 @@
       }
     });
 
+    // 键盘激活：球声明了 role=button/tabindex=0，Enter/Space 必须可用。
+    // 菜单关闭时先展开菜单并聚焦「翻译本页」（键盘用户没有 hover 入口）；
+    // 菜单已展开时再按则触发翻译本页。菜单项自身是原生 button，其 Enter/Space 走 click。
+    el.addEventListener('keydown', function (e) {
+      if (e.target !== el) return; // 菜单内按钮的按键不在此处理
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar' && e.key !== 'Space') return;
+      e.preventDefault();
+      if (menuOpen) { actTogglePage(); return; }
+      clearTimeout(hoverTimer); // 取消待触发的 hover 展开，避免随即重渲染菜单把刚设置的焦点冲掉
+      openMenu(true); // 键盘展开没有 mouseleave 语义，pin 住菜单直到 ESC / 点外部 / 选中动作
+      var first = menu && (menu.querySelector('button[data-act="toggle-page"]') || menu.querySelector('button'));
+      if (first && typeof first.focus === 'function') first.focus();
+    });
+
     // hover 满 ballHoverDelay 展开菜单；离开延迟收起（给移入菜单留 grace 期）
     el.addEventListener('mouseenter', function () {
       scheduleTip();
@@ -731,11 +756,15 @@
     try { n = parseInt(localStorage.getItem(TIP_KEY) || '0', 10) || 0; } catch (e) { n = 0; }
     if (n >= 5) return;
     clearTimeout(tipTimer);
+    // 引导 tip 必须先于 hover 展开菜单出现：取 hoverDelay 的 60%（默认 200ms → 120ms）。
+    // 原先固定 800ms 晚于 openMenu（默认 200ms），回调被 menuOpen 守卫吞掉，前 5 次引导永不出现。
+    var hoverDelay = uiCfg(settings).hoverDelay;
+    var delay = Math.max(60, Math.min(600, Math.round(hoverDelay * 0.6)));
     tipTimer = setTimeout(function () {
-      if (!ball || menuOpen || drag) return;
+      if (!ball || drag) return;
       showTip(pageState === 'on' ? '点击显示原文' : '点击翻译本页', 2600);
       try { localStorage.setItem(TIP_KEY, String(n + 1)); } catch (e) { /* 忽略 */ }
-    }, 800);
+    }, delay);
   }
 
   // 公共 API：main.js / export.js 可直接调用（easysub 借鉴：翻译完成后
@@ -1261,13 +1290,6 @@
         })
         .then(function () { /* 首轮成功时 */ }, function () {});
     }
-    try {
-      runTranslateChunks(0);
-    } catch (e) {
-      console.debug('[TA][ball]', 'doTranslate 失败', e);
-      renderSideError((e && e.message) || '翻译失败，请重试', e && e.code);
-      finish();
-    }
   }
 
   function renderSideResult(original, translated, source, target) {
@@ -1518,6 +1540,8 @@
   /* ==================== 全屏隐藏 ==================== */
 
   function setupFullscreen() {
+    if (fullscreenBound) return; // applySettings 每次设置变更都会调用，只注册一次
+    fullscreenBound = true;
     document.addEventListener('fullscreenchange', function () {
       if (!ball) return;
       var fsEl = document.fullscreenElement;
@@ -1532,6 +1556,7 @@
     settings = s;
     if (!allowed()) {
       // 菜单/tooltip 是球的子节点，ball.remove() 会一并移除；仅清空引用以便下次重建
+      removeSubReposition(); // 摘掉 openSub 注册的 scroll(捕获)/resize 监听，避免引用已移除的 sub
       menu = null;
       tip = null;
       sub = null;
@@ -1539,6 +1564,7 @@
       if (sideOpen) closeSidebar();
       if (ball) { ball.remove(); ball = null; }
       menuOpen = false;
+      pinned = false;
       return;
     }
     var prevSide = ball ? ball.getAttribute('data-ta-ball-side') : null;

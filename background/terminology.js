@@ -2,9 +2,11 @@
 // 供其它模块读取 settings.ai.{enableTerms,termsPreset,customTerms} 生成术语段落，
 // 再注入各 AI 适配器的 cfg.termsText。保持纯同步、无副作用。
 //   PRESETS          内置领域词库（英文→中文），含经典歧义消解对（margin=保证金、culture=培养 等）
-//   parseCSV(text)   解析 "source,target" 行（亦兼容中文逗号/制表符），跳过空行与 # 注释行
-//   buildTermsSection(settings)  合并预设 + 自定义词，返回术语提示串；无词返回 ''
-//   buildSystemPrompt(base, langName, settings)  基础 prompt + '\n\n' + 术语段
+//   parseCSV(text)   解析 "source,target" 行（兼容制表符 / 中英文逗号 / => → ＝＞ 箭头），
+//                    跳过空行与 # 注释行；只在首个分隔符处切分，目标译文内的逗号保留
+//   buildTermsSection(settings, langName)  合并预设 + 自定义词，返回术语提示串；无词返回 ''
+//                    langName 非中文时不注入预设的中文词表（省略时回退 settings.targetLang）
+//   buildSystemPrompt(base, langName, settings)  基础 prompt + '\n\n' + 术语段（langName 透传）
 //   getPresetNames() 预设领域名列表
 (function () {
   'use strict';
@@ -60,12 +62,14 @@
       latency: '延迟', bandwidth: '带宽', compiler: '编译器', protocol: '协议',
       deploy: '部署', algorithm: '算法'
     },
-    // 算法竞赛 / OI：英文与日文竞赛术语并列，面向中文输出。歧义项按竞赛语境消解：
-    // DP=动态规划（非"分区"），mod=取模（非"模块"），table=表，weight=权值，state=状态。
+    // 算法竞赛 / OI：英文与日文竞赛术语并列，面向中文输出（仅中文目标注入）。
+    // 歧义项按竞赛语境消解：DP=动态规划（非"分区"），mod=取模（非"模块"）。
+    // 通用高频词（tree/state/table/weight/node/identity/median/edge/vertex 等）不入表，
+    // 避免污染同页普通英文散文；竞赛专有术语（含多词短语）保留。
     oi: {
       // —— 动态规划 ——
       'dynamic programming': '动态规划', DP: '动态规划', 'state transition': '状态转移',
-      transition: '转移', state: '状态', 'recurrence relation': '递推式',
+      'recurrence relation': '递推式',
       memoization: '记忆化搜索', knapsack: '背包', 'bitmask DP': '状压 DP',
       'interval DP': '区间 DP', 'tree DP': '树形 DP', 'digit DP': '数位 DP',
       'DP table': 'DP 表',
@@ -75,7 +79,7 @@
       'generating function': '生成函数',
       // —— 数论 / 模运算 ——
       'modular arithmetic': '模运算', modulo: '取模', mod: '取模',
-      'modular inverse': '模逆元', 'inverse element': '逆元', inverse: '逆元',
+      'modular inverse': '模逆元', 'inverse element': '逆元',
       'modulo operation': '取模运算', 'prime factorization': '质因数分解',
       'sieve of Eratosthenes': '埃氏筛', 'Eulers totient': '欧拉函数',
       'greatest common divisor': '最大公约数', GCD: '最大公约数',
@@ -84,7 +88,7 @@
       'Chinese remainder theorem': '中国剩余定理', CRT: '中国剩余定理',
       'Fermats little theorem': '费马小定理', 'primitive root': '原根',
       // —— 代数结构 ——
-      monoid: '幺半群', semigroup: '半群', identity: '单位元', associative: '结合律',
+      monoid: '幺半群', semigroup: '半群', associative: '结合律',
       // —— 数据结构 ——
       'segment tree': '线段树', 'lazy propagation': '懒标记',
       'persistent segment tree': '可持久化线段树', 'Fenwick tree': '树状数组',
@@ -97,8 +101,7 @@
       trie: '字典树', 'suffix array': '后缀数组', 'suffix automaton': '后缀自动机',
       'rolling hash': '滚动哈希', 'Cartesian tree': '笛卡尔树',
       'half-open interval': '半开区间', 'half-open': '左闭右开',
-      tree: '树', edge: '边', vertex: '顶点', node: '节点', weight: '权值',
-      subtree: '子树', heap: '堆', table: '表', 'lookup table': '查找表',
+      subtree: '子树', 'lookup table': '查找表',
       // —— 图论 / 搜索 ——
       'binary search': '二分查找', 'binary lifting': '倍增', doubling: '倍增',
       'lowest common ancestor': '最近公共祖先', LCA: '最近公共祖先',
@@ -108,12 +111,12 @@
       'shortest path': '最短路', 'minimum spanning tree': '最小生成树', MST: '最小生成树',
       'topological sort': '拓扑排序', 'strongly connected component': '强连通分量',
       SCC: '强连通分量', 'connected component': '连通分量', 'maximum flow': '最大流',
-      'min-cost flow': '最小费用流', 'bipartite matching': '二分图匹配', cycle: '环',
+      'min-cost flow': '最小费用流', 'bipartite matching': '二分图匹配',
       'matrix exponentiation': '矩阵快速幂', 'fast exponentiation': '快速幂',
       'binary exponentiation': '快速幂',
       // —— 组合数学 / 概率 ——
       'expected value': '期望值', expectation: '期望', 'random variable': '随机变量',
-      variance: '方差', probability: '概率', combination: '组合数',
+      probability: '概率',
       'binomial coefficient': '二项式系数', permutation: '排列', factorial: '阶乘',
       'inclusion-exclusion': '容斥原理', 'Mobius inversion': '莫比乌斯反演',
       'Catalan number': '卡特兰数',
@@ -121,7 +124,7 @@
       'time complexity': '时间复杂度', 'space complexity': '空间复杂度',
       amortized: '摊还', greedy: '贪心', 'brute force': '暴力枚举',
       backtracking: '回溯', 'divide and conquer': '分治', 'offline queries': '离线询问',
-      median: '中位数', bitmask: '位掩码',
+      bitmask: '位掩码',
       // —— 日文竞赛术语（AtCoder 原文）——
       '動的計画法': '动态规划', '線分木': '线段树', '累積和': '前缀和',
       'ビット木': '树状数组', 'Union-Find': '并查集', '最短経路': '最短路',
@@ -145,8 +148,24 @@
     'preserve every 8-digit numeric placeholder (e.g. 【12345678】, [12345678], {12345678}) unchanged and exactly once - sentence-internal placeholders may move with target word order while paragraph-leading placeholders keep their paragraph order; ' +
     'ensure natural target-language expression.';
 
-  // 解析 CSV：每行 "source,target"（兼容中英文逗号与制表符），跳过空行 / # 注释行；
-  // 取前两段并 trim，source 或 target 为空则跳过。
+  // 术语行分隔符：制表符优先；否则取逗号 / 箭头中位置最靠前者。只切首个分隔符，
+  // 箭头后目标译文里的逗号（如 "sort => 排序, 分类"）与后续箭头都保留在 target 中。
+  var TERM_SEPS = [',', '，', '=>', '→', '＝＞'];
+  function splitTermLine(line) {
+    var tab = line.indexOf('\t');
+    if (tab >= 0) return [line.slice(0, tab), line.slice(tab + 1)];
+    var at = -1;
+    var len = 0;
+    for (var i = 0; i < TERM_SEPS.length; i++) {
+      var pos = line.indexOf(TERM_SEPS[i]);
+      if (pos >= 0 && (at < 0 || pos < at)) { at = pos; len = TERM_SEPS[i].length; }
+    }
+    if (at < 0) return null;
+    return [line.slice(0, at), line.slice(at + len)];
+  }
+
+  // 解析 CSV：每行 "source,target"（兼容制表符 / 中英文逗号 / => → ＝＞ 箭头），
+  // 跳过空行 / # 注释行；source 或 target 为空则跳过。
   function parseCSV(text) {
     var out = {};
     if (typeof text !== 'string' || !text) return out;
@@ -154,23 +173,36 @@
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
       if (!line || line.charAt(0) === '#') continue;
-      var parts = line.split(/,|，|\t/);
-      var src = (parts[0] || '').trim();
-      var tgt = (parts[1] || '').trim();
+      var pair = splitTermLine(line);
+      if (!pair) continue;
+      var src = (pair[0] || '').trim();
+      var tgt = (pair[1] || '').trim();
       if (!src || !tgt) continue;
       out[src] = tgt;
     }
     return out;
   }
 
+  // 目标语言是否中文；未显式提供语言时按中文处理，保持旧调用方（及其他预设）行为。
+  function isChineseTarget(lang) {
+    if (typeof lang !== 'string') return true;
+    var s = lang.trim().toLowerCase();
+    if (!s) return true;
+    return s === 'zh' || s.indexOf('zh-') === 0 || s.indexOf('zh_') === 0 ||
+      s.indexOf('chinese') >= 0 || s.indexOf('中文') >= 0 || s.indexOf('汉语') >= 0;
+  }
+
   // 合并 PRESETS[termsPreset] 与自定义词（自定义覆盖预设），拼成术语提示串；无词返回 ''
-  function buildTermsSection(settings) {
+  // langName 可选：非中文目标语言不注入预设的中文词表（预设均为 source=>中文）；省略时
+  // 回退 settings.targetLang，再省略按中文处理。自定义词是用户显式给出的目标译法，始终保留。
+  function buildTermsSection(settings, langName) {
     settings = settings || {};
     var ai = settings.ai || {};
     if (!ai.enableTerms) return '';
+    var lang = (typeof langName === 'string' && langName) ? langName : settings.targetLang;
     var merged = {};
     var preset = (typeof ai.termsPreset === 'string' && ai.termsPreset) ? PRESETS[ai.termsPreset] : null;
-    if (preset) {
+    if (preset && isChineseTarget(lang)) {
       Object.keys(preset).forEach(function (k) { merged[k] = preset[k]; });
     }
     var custom = parseCSV(ai.customTerms);
@@ -187,9 +219,9 @@
     PRESETS: PRESETS,
     parseCSV: parseCSV,
     buildTermsSection: buildTermsSection,
-    // 基础 prompt + 术语段；langName 保留入参语义（术语段当前不按语言区分）
+    // 基础 prompt + 术语段；langName 透传给 buildTermsSection 决定是否注入中文预设词表
     buildSystemPrompt: function (base, langName, settings) {
-      var terms = buildTermsSection(settings);
+      var terms = buildTermsSection(settings, langName);
       return (base || '') + (terms ? '\n\n' + terms : '');
     },
     getPresetNames: function () { return Object.keys(PRESETS); }

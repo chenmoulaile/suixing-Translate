@@ -85,6 +85,18 @@
 .ta-ball-tip.ta-tip-show { opacity: 1; transform: translateY(0); }
 /* 球左缘停靠 → tip 在球右侧 */
 .ta-float-ball[data-ta-ball-side="left"] .ta-ball-tip { right: auto; left: calc(100% + 8px); }
+/* 菜单展开时 tip 移到球正上方：tip 的 z-index 高于菜单，留在原位置会盖住菜单项；
+   引导 tip 需要「菜单打开瞬间仍可见」（前 5 次引导计数才会真正递增），故不隐藏而是换位。 */
+.ta-float-ball.ta-menu-open .ta-ball-tip {
+  top: auto;
+  bottom: calc(100% + 8px);    /* 菜单顶边在球顶上方 6px，这里留 8px 间隙 */
+  right: 0;
+  left: auto;
+}
+.ta-float-ball.ta-menu-open[data-ta-ball-side="left"] .ta-ball-tip {
+  right: auto;
+  left: 0;
+}
 
 /* ==================== 菜单面板 ==================== */
 
@@ -214,8 +226,6 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.ta-ball-sub, .ta-ball-submenu { padding: 2px 0 6px; }
-
 /* 主题 26 档：3 列小按钮网格 */
 .ta-ball-themes {
   display: grid;
@@ -229,7 +239,8 @@
   border-radius: 6px;
   background: transparent;
   color: inherit;
-  font: 12px/1.3 inherit;
+  font-size: 12px;
+  line-height: 1.3;
   font-family: inherit;
   text-align: center;
   cursor: pointer;

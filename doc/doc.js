@@ -300,17 +300,53 @@
     });
   }
 
+  // 解码候选打分：常用汉字加分，假名/谚文/私用区/控制符/替换符扣分。
+  // 用途仅是在 UTF-8 已解出替换符时，区分 gb18030 与 big5 哪个才是原文编码。
+  function scoreDecoded(s) {
+    var score = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c === 0xFFFD) { score -= 10; continue; }
+      if (c >= 0x4E00 && c <= 0x9FFF) { score += 2; continue; }   // CJK 基本区
+      if (c >= 0x3400 && c <= 0x4DBF) { score += 1; continue; }   // 扩展 A（罕见）
+      if (c >= 0x3040 && c <= 0x30FF) { score -= 3; continue; }   // 假名：错解 Big5 的典型症状
+      if (c >= 0xAC00 && c <= 0xD7AF) { score -= 3; continue; }   // 谚文
+      if (c >= 0xE000 && c <= 0xF8FF) { score -= 5; continue; }   // 私用区
+      if (c >= 0xD800 && c <= 0xDFFF) { score -= 5; continue; }   // 代理项
+      if (c < 0x20 && c !== 9 && c !== 10 && c !== 13) { score -= 3; } // 控制符
+    }
+    return score;
+  }
+
+  // 文本解码：默认 UTF-8（不变）；UTF-8 解出替换符时再按 gb18030 / big5 回退。
+  // 老浏览器没有 TextDecoder 才走字节兜底。
   function decodeText(buffer) {
     var bytes = new Uint8Array(buffer);
     if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
       bytes = bytes.subarray(3);
     }
     if (typeof TextDecoder !== 'undefined') {
-      return new TextDecoder('utf-8').decode(bytes);
+      var utf8 = new TextDecoder('utf-8').decode(bytes);
+      if (utf8.indexOf('\uFFFD') === -1) return utf8;
+      // 含替换符：可能是 GBK/Big5 文本，逐个试解。
+      // 不能只按“无替换符”取首个命中：gb18030 对任意双字节对都能解码且不产生 U+FFFD，
+      // 会把 Big5 文本解成假名/生僻字并抢先返回。改为打分取最优。
+      var candidates = [];
+      ['gb18030', 'big5'].forEach(function (enc) {
+        try {
+          var alt = new TextDecoder(enc).decode(bytes);
+          if (alt) candidates.push({ text: alt, score: scoreDecoded(alt) });
+        } catch (e) { /* 该编码不被支持，跳过 */ }
+      });
+      if (candidates.length) {
+        candidates.sort(function (a, b) { return b.score - a.score; });
+        if (candidates[0].score > 0) return candidates[0].text;
+      }
+      return utf8;
     }
     // 兜底（老环境）：按字节解码（Unicode 场景有限，但保证不崩）
     var s = '';
-    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    for (var j = 0; j < bytes.length; j++) s += String.fromCharCode(bytes[j]);
     return s;
   }
 
@@ -609,6 +645,8 @@
   }
 
   // 双栏检测：x 起点分布若存在明显断层且两侧各有多行，则按左右栏分别由上到下排序。
+  // 每行的栏号写进 l.col（0=左栏，1=右栏），供 pdfLinesToParagraphs 在栏界强制断段；
+  // 单栏路径不打 col 标记，pdfLinesToParagraphs 行为与原来完全一致。
   function orderPdfLines(lines, pageWidth) {
     if (lines.length < 6) return lines.slice().sort(function (a, b) { return a.y - b.y; });
     var xs = lines.map(function (l) { return l.x; }).sort(function (a, b) { return a - b; });
@@ -626,17 +664,21 @@
     lines.forEach(function (l) { (l.x < splitX ? left : right).push(l); });
     left.sort(function (a, b) { return a.y - b.y; });
     right.sort(function (a, b) { return a.y - b.y; });
+    left.forEach(function (l) { l.col = 0; });
+    right.forEach(function (l) { l.col = 1; });
     return left.concat(right);
   }
 
   // 行按行距聚段；保留行首缩进（不再 trim 掉），行尾空白才清掉。
+  // 栏号变化处强制断段：绝不把左栏末段与右栏首段并成一段。
   function pdfLinesToParagraphs(lines) {
     var paras = [], cur = [];
     for (var i = 0; i < lines.length; i++) {
       if (i > 0 && cur.length) {
+        var colBreak = lines[i].col !== lines[i - 1].col;
         var gap = lines[i].y - lines[i - 1].y;
         var threshold = Math.max(lines[i - 1].h, lines[i].h, 8) * 1.7;
-        if (gap > threshold) {
+        if (colBreak || gap > threshold) {
           paras.push(cur);
           cur = [];
         }
@@ -1158,7 +1200,13 @@
 
     if (type === 'md') {
       var md = '';
-      for (var i = 0; i < n; i++) md += '## [' + (i + 1) + ']\n\n> ' + s[i] + '\n\n' + t[i] + '\n\n---\n\n';
+      for (var i = 0; i < n; i++) {
+        // 多行段落逐行加 '> ' 前缀，否则只有首行进引用块
+        var quoted = String(s[i] == null ? '' : s[i]).split('\n').map(function (ln) {
+          return '> ' + ln;
+        }).join('\n');
+        md += '## [' + (i + 1) + ']\n\n' + quoted + '\n\n' + t[i] + '\n\n---\n\n';
+      }
       download(safeName('bilingual.md'), md, 'text/markdown;charset=utf-8');
     } else if (type === 'txt') {
       var txt = '';
@@ -1187,6 +1235,31 @@
       out += state.translations[i] + '\n\n';
     }
     return out;
+  }
+
+  // 导出内联 KaTeX 样式：读 vendor/katex.min.css 全文（离线自包含，不依赖外链）。
+  // 读取失败时返回 ''，导出降级为不内联（公式源码仍然可读）。
+  var katexCssCache = null;
+  function katexCssText() {
+    if (katexCssCache !== null) return katexCssCache;
+    katexCssCache = '';
+    var url = '../vendor/katex.min.css';
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+        url = chrome.runtime.getURL('vendor/katex.min.css');
+      }
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false); // 同步读本地扩展资源，保证导出那一刻样式已就位
+      xhr.send(null);
+      if (xhr.status === 200 || xhr.status === 0) katexCssCache = xhr.responseText || '';
+    } catch (e) { katexCssCache = ''; }
+    return katexCssCache;
+  }
+
+  // 导出文档 head 里内联的 KaTeX 样式段；读不到文件时返回空串（降级）。
+  function exportKatexCssTag() {
+    var css = katexCssText();
+    return css ? '<style data-katex="inline">' + css + '</style>' : '';
   }
 
   // PDF 导出内联 KaTeX 样式兜底；行内/块级公式还原原始 TeX 后渲染。
@@ -1224,7 +1297,7 @@
       '.pdf-block{position:absolute;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.35;overflow:hidden}' +
       '.pdf-source{color:#666}.pdf-target{color:#111}' +
       '.formula-inline{display:inline}.formula-display{display:block;margin:6px 0}' +
-      '</style></head><body><h1>' + esc(state.fileName) + '</h1>' + pages + '</body></html>';
+      '</style>' + exportKatexCssTag() + '</head><body><h1>' + esc(state.fileName) + '</h1>' + pages + '</body></html>';
   }
 
   function pdfLayerBlocks(page, translated) {
@@ -1271,7 +1344,7 @@
       '.col{flex:1;min-width:0}.lbl{font-size:11px;color:#999;margin-bottom:4px}.orig{color:#777;white-space:pre-wrap;word-break:break-word}' +
       '.trans{color:#111;font-weight:500;white-space:pre-wrap;word-break:break-word}' +
       '.formula-inline{display:inline}.formula-display{display:block;margin:6px 0}' +
-      '@media(max-width:640px){.pair{flex-direction:column}}</style></head><body>' +
+      '@media(max-width:640px){.pair{flex-direction:column}}</style>' + exportKatexCssTag() + '</head><body>' +
       '<h1>' + esc(state.fileName) + (translatedOnly ? ' · 仅译文' : ' · 双语对照') + '</h1>' + rows + '</body></html>';
   }
 

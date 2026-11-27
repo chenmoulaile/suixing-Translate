@@ -851,7 +851,12 @@
   /* ---------- ⑦ AI 与扩展场景 ---------- */
 
   const AI_SERVICE_IDS = ['openai', 'claude', 'gemini', 'deepseek', 'ollama'];
-  const PRESET_FALLBACK = ['legal', 'medical', 'ecommerce', 'education', 'gaming', 'novel', 'finance', 'tech'];
+  const PRESET_FALLBACK = ['legal', 'medical', 'ecommerce', 'education', 'gaming', 'novel', 'finance', 'tech', 'oi'];
+  // 下拉展示用中文标签；value 仍是 PRESETS 的键（保存时写回英文键）
+  const PRESET_LABELS = {
+    legal: '法律', medical: '医疗', ecommerce: '电商', education: '教育',
+    gaming: '游戏', novel: '小说', finance: '金融', tech: '科技', oi: 'OI/算法竞赛'
+  };
 
   function renderAiSection(S) {
     // 术语预设：优先取后台术语库的预设领域名，缺失时用内置兜底
@@ -872,7 +877,7 @@
       for (const name of names) {
         const o = document.createElement('option');
         o.value = String(name);
-        o.textContent = String(name);
+        o.textContent = PRESET_LABELS[name] || String(name);
         aiTermsPreset.appendChild(o);
       }
       aiTermsPreset.value = (S.ai && S.ai.termsPreset) || '';

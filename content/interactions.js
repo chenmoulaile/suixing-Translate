@@ -604,6 +604,9 @@
     // 译文经共享渲染器生成 HTML（Markdown + $...$/$$...$$ 公式）；
     // markdown-it html:false 转义原始 HTML、KaTeX trust:false，保持旧 textContent 时代的 XSS 安全。
     // 原文回显不是译文，继续走纯文本。
+    // AI 词典卡是 renderResult 之后追加到 body 的独立节点：整体重建前先摘出，重建后挂回，
+    // 否则 showOriginal 切换等重渲染会把已显示的词典卡清掉。
+    var dictCard = body.querySelector('.ta-dict-card');
     body.innerHTML = '<div class="ta-sel-trans"></div><div class="ta-sel-orig ta-hide"></div>';
     var transEl = body.querySelector('.ta-sel-trans');
     if (TA.markdown && typeof TA.markdown.render === 'function') {
@@ -614,6 +617,7 @@
     var orig = body.querySelector('.ta-sel-orig');
     orig.textContent = selUI.current.raw.trim();
     if (selUI.current.isWord && showOrig) orig.classList.remove('ta-hide');
+    if (dictCard) body.appendChild(dictCard); // 词典卡保持在译文/原文之后
     // 单词查询才提供原文回显切换（整句固定仅译文）
     var toggleBtn = selUI.bubble.querySelector('[data-act="toggle-orig"]');
     if (toggleBtn) {

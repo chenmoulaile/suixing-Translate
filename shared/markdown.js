@@ -67,16 +67,60 @@
     return '<code class="ta-math-fallback">' + escapeHtml(tex) + '</code>';
   }
 
-  // 先块后行抽取数学。抽出的 token 是惰性文本，markdown-it 不会改写其中的
-  // 反斜杠/下划线/星号；Markdown 解析完成后再一次性回填 KaTeX HTML。
+  // 先保护代码（围栏代码块 / 行内代码），再抽取数学。代码段只把数学敏感字符
+  // （$ 与 \）换成占位符，其余字符原样交给 markdown-it，既保住代码的块级/行内
+  // 结构与 HTML 转义，又让代码里的 $…$ 不被当公式；渲染完成后原样还原。
+  // 抽出的数学 token 是惰性文本，markdown-it 不会改写其中的反斜杠/下划线/星号；
+  // Markdown 解析完成后再一次性回填 KaTeX HTML。
   function extractMath(text, prefix, slots) {
+    // 统一换行为 LF：CRLF 时 `.`/`$` 行尾判断会失效，围栏识别不出来。
+    text = text.replace(/\r\n?/g, '\n');
+    // 每次渲染唯一的前缀保证占位符不会与译文/代码内容碰撞。
+    var CODE_DOLLAR = prefix + 'CD⟫';
+    var CODE_BACKSLASH = prefix + 'CB⟫';
+    var CODE_TICK = prefix + 'CT⟫';
+    var ESC_DOLLAR = prefix + 'ED⟫';
+
     function stash(tex, display) {
       var token = prefix + (display ? 'B' : 'I') + slots.length + '⟫';
-      slots.push({ token: token, html: renderMath(tex, display) });
+      // 数学里的 \$ 交给 KaTeX 当字面美元符处理（占位符含字母会干扰公式）。
+      slots.push({ token: token, html: renderMath(tex.split(ESC_DOLLAR).join('\\$'), display) });
       return token;
     }
+    // 代码段掩码：$ 与 \ 一定掩掉；围栏内容额外掩掉反引号，防止内容里的 ``` 与
+    // 外部反引号配对，把后面的正文误判成行内代码（围栏行本身不掩，否则结构失效）。
+    function maskCode(seg, maskTicks) {
+      var out = seg.replace(/\$/g, CODE_DOLLAR).replace(/\\/g, CODE_BACKSLASH);
+      return maskTicks ? out.replace(/`/g, CODE_TICK) : out;
+    }
+    function maskFenced(text) {
+      var lines = text.split('\n');
+      var open = null;
+      for (var i = 0; i < lines.length; i++) {
+        var m = /^[ \t]*(`{3,}|~{3,})(.*)$/.exec(lines[i]);
+        if (open) {
+          // 关闭围栏行本身必须保留反引号，否则 markdown-it 认不出闭合；内容行才掩反引号。
+          var closes = !!m && m[1].charAt(0) === open.charAt(0) && m[1].length >= open.length &&
+              !/\S/.test(m[2]);
+          lines[i] = maskCode(lines[i], !closes);
+          if (closes) open = null;
+        } else if (m) {
+          // CommonMark：反引号围栏的 info string 不得含反引号，否则不是开围栏。
+          if (m[1].charAt(0) === '`' && m[2].indexOf('`') >= 0) continue;
+          open = m[1];
+          lines[i] = maskCode(lines[i], false);
+        }
+      }
+      return lines.join('\n');
+    }
 
-    var out = text;
+    var out = maskFenced(text);
+    // 行内代码（成对的 `…`，CommonMark 允许跨行）：同样只掩码 $ 与 \。
+    // 长度上限 400 防止孤立反引号跨段吞掉大段正文；围栏内容里的反引号已在上一步掩掉，
+    // 不会与围栏外的反引号配对。
+    out = out.replace(/(`+)([^`]{0,400}?)\1/g, function (whole) { return maskCode(whole, false); });
+    // 转义美元符 \$：先占位，避免参与数学配对；普通文本处回填为 $。
+    out = out.replace(/\\\$/g, ESC_DOLLAR);
 
     // 1) 块级 $$...$$（独占一行、可跨行）
     out = out.replace(/(^|\n)[ \t]*\$\$[ \t]*\n?([\s\S]+?)\n?[ \t]*\$\$[ \t]*(?=\n|$)/g,
@@ -84,21 +128,46 @@
         return '\n\n' + stash(tex, true) + '\n\n';
       });
 
-    // 2) 块级 \[...\]（别名，可跨行）
+    // 2) 行内 $$...$$：同一行内成对出现时按块级公式渲染，避免残留两个游离 $。
+    out = out.replace(/\$\$[ \t]*([^\n$]+?)[ \t]*\$\$/g, function (whole, tex) {
+      tex = tex.trim();
+      if (!tex) return whole;
+      return stash(tex, true);
+    });
+
+    // 3) 块级 \[...\]（别名，可跨行）
     out = out.replace(/\\\[([\s\S]+?)\\\]/g, function (whole, tex) {
       return '\n\n' + stash(tex, true) + '\n\n';
     });
 
-    // 3) 行内 \(...\)（别名，不跨行）
+    // 4) 行内 \(...\)（别名，不跨行）
     out = out.replace(/\\\(([^\n]+?)\\\)/g, function (whole, tex) {
       return stash(tex, false);
     });
 
-    // 4) 行内 $...$（不跨行、非空）
-    out = out.replace(/\$([^$\n]+?)\$/g, function (whole, tex) {
+    // 5) 行内 $...$：不跨行、两侧不紧邻空白、非货币、不跨词吞空格。
+    //    宁可少渲染，也不把正文吞成公式。
+    out = out.replace(/\$([^\s$](?:[^$\n]*?[^\s$])?)\$/g, function (whole, tex, offset, src) {
+      var before = offset > 0 ? src.charAt(offset - 1) : '';
+      var after = src.charAt(offset + whole.length);
+      // 开 $ 被反斜杠转义（\$ 已提前占位，这里防御残余的 \\$ 等组合）
+      if (before === '\\') return whole;
+      // 货币：$5 / 5$ / $10 —— 两侧任一侧紧邻数字时按货币跳过
+      if (/[0-9]/.test(before) || /[0-9]/.test(after)) return whole;
+      // 含空白却没有任何 TeX 结构字符（如 $x and y$）按正文处理
+      if (/\s/.test(tex) && !/[\\^_{}=+*/<>|~-]/.test(tex)) return whole;
+      // shell 变量：$PATH / $HOME 这类全大写标识符、含冒号的路径串、$VAR= 右侧，
+      // 都不是公式；避免 export PATH=$HOME/bin:$PATH 被吞。
+      if (/^[A-Z][A-Z0-9_]*$/.test(tex)) return whole;
+      if (before === '=') return whole;
+      if (tex.indexOf(':') >= 0 && !/[\\^_{}=+*/<>|~-]/.test(tex)) return whole;
       return stash(tex, false);
     });
 
+    slots.codeDollar = CODE_DOLLAR;
+    slots.codeBackslash = CODE_BACKSLASH;
+    slots.codeTick = CODE_TICK;
+    slots.escDollar = ESC_DOLLAR;
     return out;
   }
 
@@ -132,6 +201,11 @@
     for (var i = 0; i < slots.length; i++) {
       html = html.split(slots[i].token).join(slots[i].html);
     }
+    // 还原代码段里被掩码的 $ 与 \，以及转义美元符 \$。（split/join 避免 $ 被当替换模式）
+    html = html.split(slots.codeDollar).join('$')
+      .split(slots.codeBackslash).join('\\')
+      .split(slots.codeTick).join('`')
+      .split(slots.escDollar).join('$');
     return html;
   }
 

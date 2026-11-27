@@ -4,7 +4,7 @@
 // background 通过 importScripts 首位加载本文件，效果相同。
 //
 // v0.2 schema 变更（本文件唯一写者=A 排版引擎改造员，接口冻结，B/C 按此施工）：
-//   THEMES 12 档 → 24 档 + THEME_NAMES 中文映射；
+//   THEMES 12 档 → 26 档 + THEME_NAMES 中文映射；
 //   targetStyle.loading 三档（spinner/text/none）；
 //   ui 增加 ballPosition/ballOpacity/ballHoverDelay/ballBlockedSites（悬浮球增强，C）；
 //   hoverTranslate 增加 trigger/holdKey/pressHoldMs（B 悬停翻译三档触发）；
@@ -84,7 +84,7 @@
     translateMode: 'bilingual',
     scopeMode: 'smart',
     translationPosition: 'after',
-    // 译文外观：theme=24 档之一；color/fontSize/customCss 自定义保留；
+    // 译文外观：theme=26 档之一；color/fontSize/customCss 自定义保留；
     // loading=翻译中占位形态（spinner 闪烁圈 / text 静态省略号 / none 无）
     targetStyle: { theme: 'dashed', color: '', fontSize: '', customCss: '', loading: 'spinner', layout: 'block' },
     // 悬浮球：ballPosition 左右停靠；ballOpacity=不透明度百分比（0–100，直白化语义：
@@ -138,6 +138,9 @@
 
   function mergeInto(target, src) {
     Object.keys(src).forEach(function (k) {
+      // 原型链污染防护：存储值里的 __proto__/constructor/prototype 一律忽略，
+      // 否则 target[k] = sv 会改写 Object.prototype（递归分支更会深度污染）。
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') return;
       var sv = src[k];
       if (sv === undefined) return;
       // 数组：整体替换，不做逐项合并

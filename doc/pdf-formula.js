@@ -84,13 +84,18 @@
       }
     });
 
-    // 裸数学串：含数学运算符/符号且含字母数字，长度 >=3。保守判定，避免误吃正文。
+    // 裸数学串：收紧启发式——必须含「强数学符号」（∑∫√∞∂∇）或至少 2 个关系符，
+    // 且含字母数字、长度 >=3。正文里的 A=B、x≤y 只有单个关系符，不再误判为公式；
+    // 宁可漏判（交给 MT 正常翻译），不可误判（把正文吞成 TeX）。
     var bareRe = /[^\s，。；、,;:：]{1,32}/g;
-    var mathMark = /[=≈∑∫√∞∂∇≤≥≠±]/;
+    var strongMark = /[∑∫√∞∂∇]/;
+    var relMark = /[=≈≤≥≠±]/g;
     var bm;
     while ((bm = bareRe.exec(src)) !== null) {
       var raw = bm[0];
-      if (!mathMark.test(raw) || !/[A-Za-z0-9]/.test(raw)) continue;
+      var relCount = (raw.match(relMark) || []).length;
+      if (!strongMark.test(raw) && relCount < 2) continue;
+      if (!/[A-Za-z0-9]/.test(raw)) continue;
       var trimmed = raw.replace(/^[^\w∑∫√∞∂∇≤≥≠±]+|[^\w∑∫√∞∂∇≤≥≠±]+$/g, '');
       if (trimmed.length < 3) continue;
       var s2 = bm.index + raw.indexOf(trimmed);
@@ -136,11 +141,8 @@
       var rec = byId['m' + num];
       return rec ? rec.source : whole;
     });
-    // MT 丢掉一侧括号时的兜底：仅替换本段登记过的 id。
-    out = out.replace(/\bm\s*(\d+)\b/g, function (whole, num) {
-      var rec = byId['m' + num];
-      return rec ? rec.source : whole;
-    });
+    // 不再做裸 mN 兜底：译文正文里的正常 “m3 / m 3” 文本会被误替换。
+    // 只还原带成对（或 MT 改写的单侧）定界符的 ⟪mN⟫ 形态。
     return out;
   }
 

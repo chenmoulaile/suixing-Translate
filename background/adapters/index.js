@@ -206,7 +206,8 @@
     var config = serviceConfig(settings, serviceId);
     if (typeof TA.terminology === 'object' && TA.terminology) {
       try {
-        var termsText = TA.terminology.buildTermsSection(settings);
+        // 传本次请求的目标语言：术语段只能按实际目标语言判断（全局 settings 可能不同）
+        var termsText = TA.terminology.buildTermsSection(settings, req.targetLang);
         if (typeof termsText === 'string' && termsText) config.termsText = termsText;
       } catch (e) { /* 术语库可用时增强，失败不影响翻译 */ }
     }
