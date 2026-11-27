@@ -403,6 +403,55 @@ async function main() {
     record('7. 侧边栏 openSidebar 真实译文结果容器渲染为 HTML（.katex/元素节点）',
       !!(sideState && sideState.pass), [JSON.stringify(sideState)]);
 
+    /* 8. 复核回归：设置页真实下拉含 oi（options.html 必须加载 terminology.js） */
+    let presetState = { ok: false };
+    try {
+      const optPage = await browser.newPage();
+      await optPage.goto('chrome-extension://' + extId + '/options/options.html', { waitUntil: 'load', timeout: 30000 });
+      await sleep(500);
+      presetState = await optPage.evaluate(() => {
+        const sel = document.querySelector('#aiTermsPreset');
+        const opts = sel ? Array.from(sel.options).map((o) => o.value) : [];
+        return { ok: !!sel, hasOi: opts.indexOf('oi') >= 0, opts };
+      });
+      presetState.pass = !!(presetState.ok && presetState.hasOi);
+      await optPage.close().catch(() => {});
+    } catch (e) { presetState = { ok: false, err: 'EXCEPTION=' + String((e && e.message) || e) }; }
+    record('8. 设置页术语下拉真实包含 oi 预设', !!(presetState && presetState.pass), [JSON.stringify(presetState)]);
+
+    /* 9. 复核回归：PDF 原文层/导出原文保留 TeX，不显示 ⟪mN⟫ 占位 */
+    let sourceFormulaState = { ok: false };
+    try {
+      sourceFormulaState = await docPage.evaluate(() => {
+        const F = globalThis.TA.pdfFormula;
+        const D = globalThis.TA.doc;
+        if (!F || !D || !D.buildPdfPagePair) return { ok: false, err: '缺少 pdfFormula/doc 接口' };
+        const src = '设 $E=mc^2$ 为质能方程';
+        const m = F.maskFormulas(src);
+        const page = { pageNo: 1, width: 612, height: 792, blocks: [0] };
+        const meta = { pageNo: 1, x: 10, y: 10, width: 200, height: 20 };
+        const node = D.buildPdfPagePair(page, {
+          segments: [m.masked],
+          sourceSegments: [src],
+          translations: [m.masked],
+          segMeta: [meta]
+        });
+        const orig = node.querySelector('.pdf-source .pdf-block');
+        const origText = orig ? (orig.textContent || '') : '';
+        const formulaNodes = orig ? orig.querySelectorAll('[data-formula]').length : 0;
+        return {
+          ok: true,
+          masked: m.masked, origText, formulaNodes,
+          noTokenInSource: origText.indexOf('⟪m') < 0,
+          hasFormulaAttr: formulaNodes > 0
+        };
+      });
+      sourceFormulaState.pass = !!(sourceFormulaState.ok && sourceFormulaState.noTokenInSource &&
+        sourceFormulaState.hasFormulaAttr);
+    } catch (e) { sourceFormulaState = { ok: false, err: 'EXCEPTION=' + String((e && e.message) || e) }; }
+    record('9. PDF 原文层与导出保留公式（无 ⟪mN⟫ 占位）', !!(sourceFormulaState && sourceFormulaState.pass),
+      [JSON.stringify(sourceFormulaState)]);
+
     await page.close().catch(() => {});
     await docPage.close().catch(() => {});
 

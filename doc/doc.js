@@ -25,7 +25,8 @@
     fileName: '',
     fileSize: 0,
     kind: 'text',          // 'text' | 'subtitle' | 'pdf'
-    segments: [],
+    segments: [],          // 送 MT 用的文本（PDF 里公式被遮罩成 ⟪mN⟫）
+    sourceSegments: [],    // 原始文本（公式未遮罩），供展示与导出原文层使用
     groups: [],            // 与 segments 平行的分组标签（如“第 N 页 / 章节名”），可为 null
     cues: null,            // 字幕：与 segments 平行 [{start,end,text}]
     translations: [],
@@ -197,6 +198,7 @@
   function resetState() {
     state.kind = 'text';
     state.segments = [];
+    state.sourceSegments = [];
     state.groups = [];
     state.cues = null;
     state.translations = [];
@@ -236,6 +238,7 @@
       .then(function (parsed) {
         state.kind = parsed.kind || 'text';
         state.segments = parsed.segments || [];
+        state.sourceSegments = state.segments.slice();
         state.groups = parsed.groups || new Array(state.segments.length).fill(null);
         state.cues = parsed.cues || null;
         state.pdfPages = parsed.pdfPages || [];
@@ -1014,10 +1017,12 @@
     node.style.minHeight = (Math.max(rect.height, 8) / ph * 100).toFixed(3) + '%';
   }
 
-  // data（可选）：{segments,translations,segMeta}，测试/独立调用时传入；缺省用 state。
+  // data（可选）：{segments,translations,segMeta,sourceSegments}，测试/独立调用时传入；缺省用 state。
+  // segments 是送 MT 的遮罩串；展示原文优先取 sourceSegments（未遮罩），确保公式可见。
   function buildPdfPagePair(page, data) {
     var view = data || {
       segments: state.segments,
+      sourceSegments: state.sourceSegments,
       translations: state.translations,
       segMeta: state.segMeta
     };
@@ -1041,9 +1046,11 @@
         block.className = 'pdf-block';
         block.setAttribute('data-seg', String(idx));
         placeAt(block, meta, page);
+        var original = view.sourceSegments && view.sourceSegments[idx] != null
+          ? view.sourceSegments[idx] : view.segments[idx];
         var text = cls === 'pdf-source'
-          ? (view.segments ? view.segments[idx] : '')
-          : (view.translations && view.translations[idx] != null ? view.translations[idx] : view.segments[idx]);
+          ? original
+          : (view.translations && view.translations[idx] != null ? view.translations[idx] : original);
         appendSegmentContent(block, text, cls);
         layer.appendChild(block);
       });
@@ -1055,6 +1062,9 @@
   function buildCard(seg, i) {
     var card = document.createElement('div');
     card.className = 'card';
+    // seg 来自送 MT 的遮罩串；展示/复制原文用未遮罩的原始串，避免公式变 ⟪mN⟫。
+    var original = state.sourceSegments && state.sourceSegments[i] != null
+      ? state.sourceSegments[i] : seg;
 
     var idx = document.createElement('div');
     idx.className = 'card-index';
@@ -1073,13 +1083,13 @@
 
     var orig = document.createElement('p');
     orig.className = 'segment-original';
-    appendSegmentContent(orig, seg, 'original');
+    appendSegmentContent(orig, original, 'original');
     body.appendChild(orig);
 
     var trans = document.createElement('p');
     trans.className = 'segment-translation';
     if (state.errors[i]) trans.classList.add('failed');
-    appendSegmentContent(trans, state.translations[i] != null ? state.translations[i] : seg, 'translation');
+    appendSegmentContent(trans, state.translations[i] != null ? state.translations[i] : original, 'translation');
     body.appendChild(trans);
 
     if (state.errors[i]) {
@@ -1099,8 +1109,8 @@
       var style = el.results.getAttribute('data-style') || 'bilingual';
       var text;
       if (style === 'translation') text = state.translations[i];
-      else if (style === 'original') text = seg;
-      else text = seg + '\n' + state.translations[i];
+      else if (style === 'original') text = original;
+      else text = original + '\n' + state.translations[i];
       copyText(text).then(function () {
         copy.textContent = '已复制';
         copy.classList.add('done');
@@ -1143,7 +1153,8 @@
   function doExport(type) {
     var n = state.segments.length;
     if (!n) { showNotice('没有可导出的内容。', 'error'); return; }
-    var s = state.segments, t = state.translations;
+    var s = state.sourceSegments && state.sourceSegments.length === n ? state.sourceSegments : state.segments;
+    var t = state.translations;
 
     if (type === 'md') {
       var md = '';
@@ -1172,7 +1183,7 @@
       var start = c ? c.start : '00:00:00,000';
       var end = c ? c.end : '00:00:00,000';
       out += (i + 1) + '\n' + start + ' --> ' + end + '\n';
-      if (!translatedOnly) out += state.segments[i] + '\n';
+      if (!translatedOnly) out += (state.sourceSegments[i] != null ? state.sourceSegments[i] : state.segments[i]) + '\n';
       out += state.translations[i] + '\n\n';
     }
     return out;
@@ -1222,9 +1233,10 @@
     (page.blocks || []).forEach(function (idx) {
       var meta = state.segMeta[idx];
       if (!meta) return;
+      var original = state.sourceSegments[idx] != null ? state.sourceSegments[idx] : state.segments[idx];
       var text = translated
-        ? (state.translations[idx] != null ? state.translations[idx] : state.segments[idx])
-        : state.segments[idx];
+        ? (state.translations[idx] != null ? state.translations[idx] : original)
+        : original;
       var style = 'left:' + (meta.x / pw * 100).toFixed(3) + '%;top:' + (meta.y / ph * 100).toFixed(3) +
         '%;width:' + (Math.max(meta.width, 20) / pw * 100).toFixed(3) + '%';
       out += '<div class="pdf-block" style="' + style + '">' + exportFormulaHtml(text) + '</div>';
@@ -1245,7 +1257,8 @@
       } else {
         rows += '<section class="pair">' + group +
           '<div class="num">' + (i + 1) + '</div>' +
-          '<div class="col"><div class="lbl">原文</div><div class="orig">' + exportFormulaHtml(state.segments[i]) + '</div></div>' +
+          '<div class="col"><div class="lbl">原文</div><div class="orig">' +
+          exportFormulaHtml(state.sourceSegments[i] != null ? state.sourceSegments[i] : state.segments[i]) + '</div></div>' +
           '<div class="col"><div class="lbl">译文</div><div class="trans">' + exportFormulaHtml(state.translations[i]) + '</div></div>' +
           '</section>\n';
       }
